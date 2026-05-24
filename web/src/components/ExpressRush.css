@@ -1,0 +1,179 @@
+.express-rush {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 55%, rgba(0, 0, 0, 0.08) 100%);
+  border-radius: inherit;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.rush-bg-icons {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 0.5rem;
+  padding: 1rem 1.25rem 3.5rem;
+  opacity: 0.35;
+}
+
+.rush-bg-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.5rem, 3vw, 2.75rem);
+  animation: iconFloat 3s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.25s);
+}
+
+.speed-lines {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 10%;
+  pointer-events: none;
+}
+
+.speed-lines span {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  animation: speedLine 0.55s linear infinite;
+}
+
+.speed-lines span:nth-child(1) { width: 35%; animation-delay: 0s; }
+.speed-lines span:nth-child(2) { width: 55%; animation-delay: 0.1s; }
+.speed-lines span:nth-child(3) { width: 70%; animation-delay: 0.2s; }
+.speed-lines span:nth-child(4) { width: 45%; animation-delay: 0.3s; }
+.speed-lines span:nth-child(5) { width: 60%; animation-delay: 0.4s; }
+
+.rush-lane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 38%;
+  height: 3rem;
+}
+
+.rush-scooter {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: rushLane 2.4s ease-in-out infinite;
+  will-change: left;
+}
+
+.rush-rider {
+  font-size: clamp(2rem, 4vw, 3rem);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+}
+
+.rush-box {
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  animation: boxBounce 0.35s ease-in-out infinite alternate;
+}
+
+.rush-trail {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #fef08a;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  animation: trailPulse 1s ease-in-out infinite;
+}
+
+.rush-stats {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.rush-stats strong {
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+@keyframes rushLane {
+  0% { left: 4%; transform: scaleX(1); }
+  45% { left: calc(100% - 4.5rem); transform: scaleX(1); }
+  50% { left: calc(100% - 4.5rem); transform: scaleX(-1); }
+  95% { left: 4%; transform: scaleX(-1); }
+  100% { left: 4%; transform: scaleX(1); }
+}
+
+@keyframes speedLine {
+  0% { transform: translateX(0); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateX(-120px); opacity: 0; }
+}
+
+@keyframes boxBounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-5px); }
+}
+
+@keyframes trailPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.97); }
+}
+
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (min-width: 768px) {
+  .rush-bg-icons {
+    padding: 1.25rem 1.5rem 4rem;
+    opacity: 0.42;
+  }
+
+  .rush-stats {
+    font-size: 0.68rem;
+  }
+
+  .rush-stats strong {
+    font-size: 0.95rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .express-rush {
+    min-height: 240px;
+  }
+
+  .rush-bg-icons {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    opacity: 0.48;
+  }
+
+  .rush-lane {
+    bottom: 42%;
+  }
+}

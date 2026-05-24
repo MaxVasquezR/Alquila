@@ -1,0 +1,102 @@
+.deal-bar {
+  margin: 0.75rem 0;
+  padding: 1rem !important;
+}
+
+.deal-steps {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.deal-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.35;
+}
+
+.deal-step.done {
+  opacity: 1;
+}
+
+.deal-step.active .deal-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.deal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.deal-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.1;
+  color: var(--muted);
+}
+
+.deal-step.active .deal-label {
+  color: var(--accent);
+}
+
+.deal-price {
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.deal-closed {
+  text-align: center;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0.5rem;
+}
+
+.deal-bar .btn-express {
+  margin-top: 0.25rem;
+}
+
+.deal-confirm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.deal-price-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 400px) {
+  .deal-confirm-row {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .deal-confirm-row .btn-express {
+    flex-shrink: 0;
+    width: auto;
+    min-width: 140px;
+  }
+}
+
+@media (min-width: 768px) {
+  .deal-label {
+    font-size: 0.68rem;
+  }
+
+  .deal-steps {
+    gap: 8px;
+  }
+}

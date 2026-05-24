@@ -1,0 +1,99 @@
+export enum UserRole {
+  OWNER = 'OWNER',
+  TENANT = 'TENANT',
+  BOTH = 'BOTH',
+}
+
+export enum MembershipTier {
+  FREE = 'FREE',
+  PREMIUM = 'PREMIUM',
+}
+
+export enum ProductStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  RENTED = 'RENTED',
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+}
+
+export enum AdPlacement {
+  HOME_FEED = 'HOME_FEED',
+  CATEGORY_TOP = 'CATEGORY_TOP',
+}
+
+export enum ChatThreadStatus {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+}
+
+/** Ciclo del trato express */
+export enum DealStatus {
+  INTERESTED = 'INTERESTED',
+  AGREED = 'AGREED',
+  PICKED_UP = 'PICKED_UP',
+  CLOSED = 'CLOSED',
+}
+
+export enum ChatMessageType {
+  TEXT = 'TEXT',
+  QUESTIONNAIRE_ANSWER = 'QUESTIONNAIRE_ANSWER',
+  SYSTEM = 'SYSTEM',
+}
+
+export enum RentalRequestStatus {
+  OPEN = 'OPEN',
+  FULFILLED = 'FULFILLED',
+  CLOSED = 'CLOSED',
+}
+
+export enum KycStatus {
+  NONE = 'NONE',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  EXPIRED = 'EXPIRED',
+}
+
+export enum MembershipPlan {
+  PREMIUM_19 = 'PREMIUM_19',
+  PREMIUM_29 = 'PREMIUM_29',
+}
+
+export enum PaymentProvider {
+  CULQI = 'CULQI',
+  MERCADOPAGO = 'MERCADOPAGO',
+  MOCK = 'MOCK',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+}
+
+export enum AuditAction {
+  REGISTER = 'REGISTER',
+  LOGIN = 'LOGIN',
+  OTP_VERIFIED = 'OTP_VERIFIED',
+  KYC_STARTED = 'KYC_STARTED',
+  KYC_APPROVED = 'KYC_APPROVED',
+  KYC_REJECTED = 'KYC_REJECTED',
+  PRODUCT_PUBLISHED = 'PRODUCT_PUBLISHED',
+  LISTING_PAYMENT = 'LISTING_PAYMENT',
+  REVEAL_EXACT_LOCATION = 'REVEAL_EXACT_LOCATION',
+  DEAL_CLOSED = 'DEAL_CLOSED',
+  USER_REPORTED = 'USER_REPORTED',
+  USER_BLOCKED = 'USER_BLOCKED',
+}
+
+export enum NotificationType {
+  NEW_CHAT = 'NEW_CHAT',
+  NEW_MESSAGE = 'NEW_MESSAGE',
+  QUESTIONNAIRE_DONE = 'QUESTIONNAIRE_DONE',
+  RENTAL_REQUEST = 'RENTAL_REQUEST',
+  CONTACT_ACCEPTED = 'CONTACT_ACCEPTED',
+  DEAL_AGREED = 'DEAL_AGREED',
+  DEAL_PICKED_UP = 'DEAL_PICKED_UP',
+  DEAL_CLOSED = 'DEAL_CLOSED',
+  LOCATION_SHARED = 'LOCATION_SHARED',
+}

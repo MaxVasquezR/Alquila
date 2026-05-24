@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alquila API</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f1419;
+      color: #e7e9ea;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    main {
+      max-width: 520px;
+      width: 100%;
+    }
+    h1 { font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; }
+    .badge {
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.25rem 0.6rem;
+      background: #1d3a2f;
+      color: #4ade80;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    p { margin-top: 1rem; color: #8b98a5; line-height: 1.6; font-size: 0.95rem; }
+    ul {
+      margin-top: 1.5rem;
+      list-style: none;
+      border: 1px solid #2f3336;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    li {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #2f3336;
+      font-size: 0.85rem;
+      font-family: ui-monospace, monospace;
+    }
+    li:last-child { border-bottom: none; }
+    .method { color: #1d9bf0; font-weight: 600; margin-right: 0.5rem; }
+    a { color: #1d9bf0; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .footer { margin-top: 1.5rem; font-size: 0.8rem; color: #6e767d; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Alquila</h1>
+    <span class="badge" id="status">API activa</span>
+    <p>
+      Esto es el <strong>backend</strong> (API REST). No hay app web todavía —
+      el navegador solo muestra datos JSON en las rutas de la API.
+    </p>
+    <ul>
+      <li><span class="method">GET</span><a href="/health">/health</a> — estado</li>
+      <li><span class="method">GET</span><a href="/api/v1/products">/api/v1/products</a> — listado</li>
+      <li><span class="method">POST</span>/api/v1/auth/register — registro</li>
+      <li><span class="method">POST</span>/api/v1/auth/login — login</li>
+    </ul>
+    <p class="footer">
+      Próximo paso: frontend (web o móvil) que consuma esta API.
+    </p>
+  </main>
+  <script>
+    fetch('/health').then(r => r.json()).then(d => {
+      document.getElementById('status').textContent = d.status === 'ok' ? 'API activa' : 'Error';
+    }).catch(() => {
+      document.getElementById('status').textContent = 'Sin conexión';
+      document.getElementById('status').style.background = '#3a1d1d';
+      document.getElementById('status').style.color = '#f87171';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: alquila_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: alquila
+      POSTGRES_PASSWORD: alquila
+      POSTGRES_DB: alquila_dev
+    volumes:
+      - alquila_pg_data:/var/lib/postgresql/data
+
+volumes:
+  alquila_pg_data:
