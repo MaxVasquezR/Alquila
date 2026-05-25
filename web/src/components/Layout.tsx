@@ -16,6 +16,14 @@ const DESKTOP_NAV = [
   { path: '/mis-productos', label: 'Mis equipos' },
 ] as const;
 
+const FOOTER_LINKS = [
+  { path: '/como-funciona', label: 'Cómo funciona' },
+  { path: '/seguridad', label: 'Seguridad' },
+  { path: '/privacidad', label: 'Privacidad' },
+  { path: '/terminos', label: 'Términos' },
+  { path: '/ayuda', label: 'Ayuda' },
+] as const;
+
 function isActive(path: string, current: string) {
   if (path === '/') return current === '/';
   return current === path || current.startsWith(`${path}/`);
@@ -113,6 +121,23 @@ export function Layout() {
         <Outlet />
       </main>
 
+      <footer className="footer-shell">
+        <div className="container footer-inner">
+          <div className="footer-brand">
+            <strong>Alquila</strong>
+            <p>Marketplace express P2P en Lima con privacidad, verificación y acuerdos dentro del chat.</p>
+          </div>
+          <div className="footer-links">
+            {FOOTER_LINKS.map((item) => (
+              <Link key={item.path} to={item.path}>
+                {item.label}
+              </Link>
+            ))}
+            <a href="mailto:soporte@alquila.pe">soporte@alquila.pe</a>
+          </div>
+        </div>
+      </footer>
+
       <nav className="bottom-nav" aria-label="Móvil">
         {MOBILE_NAV.slice(0, 2).map((item) => (
           <Link key={item.path} to={item.path} className={bottomNavClass(item.path)}>
@@ -136,8 +161,8 @@ export function Layout() {
       </nav>
 
       <div className="pickup-banner">
-        <span className="pickup-banner-short">⚡ Express · Recoges hoy</span>
-        <span className="pickup-banner-full"><span>⚡ Express</span> · Comercializa rápido · Tú recoges en minutos</span>
+        <span className="pickup-banner-short">⚡ Super rápido · Pickup hoy</span>
+        <span className="pickup-banner-full"><span>⚡ Super rápido</span> · Publica, acelera y recoge hoy en minutos</span>
       </div>
     </div>
   );

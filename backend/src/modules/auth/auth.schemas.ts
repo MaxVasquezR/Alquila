@@ -28,3 +28,7 @@ export const otpVerifySchema = z.object({
   phone: z.string().min(9).max(15),
   code: z.string().length(6),
 });
+
+export const emailVerifySchema = z.object({
+  token: z.string().min(20),
+});

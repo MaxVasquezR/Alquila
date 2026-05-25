@@ -8,6 +8,7 @@ import { auditService } from '../../services/audit.service';
 import { AuditAction } from '../../types/enums';
 
 const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 
 export class OtpService {
   private userRepo = AppDataSource.getRepository(User);
@@ -29,10 +30,28 @@ export class OtpService {
       throw new AppError(409, 'Celular ya registrado', 'PHONE_EXISTS');
     }
 
+    const latestOtp = await this.otpRepo.findOne({
+      where: { phone: normalized, used: false },
+      order: { createdAt: 'DESC' },
+    });
+    if (
+      latestOtp &&
+      Date.now() - latestOtp.createdAt.getTime() < OTP_RESEND_COOLDOWN_MS &&
+      latestOtp.expiresAt > new Date()
+    ) {
+      throw new AppError(
+        429,
+        'Espera un minuto antes de pedir otro código',
+        'OTP_RATE_LIMIT',
+      );
+    }
+
     const code = generateOtpCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+    const codeHash = hashDni(`otp:${normalized}:${code}`);
+    await this.otpRepo.update({ phone: normalized, used: false }, { used: true });
     await this.otpRepo.save(
-      this.otpRepo.create({ phone: normalized, code, expiresAt, used: false }),
+      this.otpRepo.create({ phone: normalized, code: codeHash, expiresAt, used: false }),
     );
 
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -52,11 +71,12 @@ export class OtpService {
   async verify(userId: string, phone: string, code: string) {
     const normalized = this.normalizePhone(phone);
     const otp = await this.otpRepo.findOne({
-      where: { phone: normalized, code, used: false },
+      where: { phone: normalized, used: false },
       order: { createdAt: 'DESC' },
     });
 
-    if (!otp || otp.expiresAt < new Date()) {
+    const codeHash = hashDni(`otp:${normalized}:${code}`);
+    if (!otp || otp.expiresAt < new Date() || otp.code !== codeHash) {
       throw new AppError(400, 'Código inválido o expirado', 'INVALID_OTP');
     }
 
@@ -70,6 +90,7 @@ export class OtpService {
     user.phoneHash = hashDni(`phone:${normalized}`);
     user.phoneVerified = true;
     await this.userRepo.save(user);
+    await this.otpRepo.update({ phone: normalized, used: false }, { used: true });
 
     await auditService.log(userId, AuditAction.OTP_VERIFIED, 'user', userId);
 

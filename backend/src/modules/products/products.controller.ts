@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import { authMiddleware } from '../../middleware/auth';
 import { validateBody, validateQuery } from '../../middleware/validate';
 import {
@@ -9,14 +10,44 @@ import {
   ListProductsQuery,
 } from './products.schemas';
 import { ProductsService } from './products.service';
+import { env } from '../../config/env';
+import { mediaService } from '../../services/media.service';
 
 function paramId(req: Request): string {
   const id = req.params.id;
   return Array.isArray(id) ? id[0] : id;
 }
 
+function parseCheckboxValue(value: unknown) {
+  if (value === true || value === 'true' || value === 'on' || value === '1') return true;
+  if (value === false || value === 'false' || value === '0') return false;
+  return undefined;
+}
+
+function normalizeProductBody(body: Record<string, unknown>) {
+  return {
+    ...body,
+    availableToday: parseCheckboxValue(body.availableToday),
+  };
+}
+
 const router = Router();
 const productsService = new ProductsService();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: env.maxProductImages,
+    fileSize: env.maxProductImageBytes,
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.mimetype)) {
+      cb(new Error('Solo se permiten imágenes jpg, png o webp'));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 router.get(
   '/',
@@ -55,12 +86,28 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 router.post(
   '/express',
   authMiddleware,
-  validateBody(createProductExpressSchema),
+  upload.array('images', env.maxProductImages),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const parsed = createProductExpressSchema.safeParse(
+        normalizeProductBody(req.body as Record<string, unknown>),
+      );
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'Validation failed',
+          details: parsed.error.flatten().fieldErrors,
+        });
+        return;
+      }
+      const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      const uploadedImageUrls =
+        files.length > 0 ? await mediaService.uploadProductImages(files) : [];
       const product = await productsService.createExpress(
         req.user!.userId,
-        req.body,
+        {
+          ...parsed.data,
+          imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : parsed.data.imageUrls,
+        },
       );
       res.status(201).json(product);
     } catch (err) {
@@ -72,12 +119,28 @@ router.post(
 router.post(
   '/',
   authMiddleware,
-  validateBody(createProductSchema),
+  upload.array('images', env.maxProductImages),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const parsed = createProductSchema.safeParse(
+        normalizeProductBody(req.body as Record<string, unknown>),
+      );
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'Validation failed',
+          details: parsed.error.flatten().fieldErrors,
+        });
+        return;
+      }
+      const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      const uploadedImageUrls =
+        files.length > 0 ? await mediaService.uploadProductImages(files) : [];
       const product = await productsService.create(
         req.user!.userId,
-        req.body,
+        {
+          ...parsed.data,
+          imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : parsed.data.imageUrls,
+        },
       );
       res.status(201).json(product);
     } catch (err) {

@@ -19,6 +19,7 @@ interface AuthState {
     password: string;
     displayName: string;
     phone: string;
+    acceptTerms: true;
   }) => Promise<void>;
   refreshUser: () => Promise<void>;
   setUserLocal: (user: User) => void;
@@ -50,11 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     if (!getToken()) return;
-    const summary = await api<{ id: string; email: string; displayName: string; kycVerified: boolean; kycStatus: string; phoneVerified: boolean; avatarUrl?: string; membershipTier: string; membershipExpiresAt?: string; stats: { dealsClosed: number } }>('/account/summary');
+    const summary = await api<{ id: string; email: string; emailVerified: boolean; displayName: string; kycVerified: boolean; kycStatus: string; phoneVerified: boolean; avatarUrl?: string; membershipTier: string; membershipExpiresAt?: string; stats: { dealsClosed: number } }>('/account/summary');
     setUser((prev) => {
       if (!prev) return prev;
       const updated: User = {
         ...prev,
+        emailVerified: summary.emailVerified,
         displayName: summary.displayName,
         kycVerified: summary.kycVerified,
         kycStatus: summary.kycStatus as User['kycStatus'],
@@ -63,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         membershipTier: summary.membershipTier,
         membershipExpiresAt: summary.membershipExpiresAt,
         dealsClosedCount: summary.stats.dealsClosed,
-        canPublish: summary.kycVerified && summary.phoneVerified,
+        canPublish: summary.kycVerified && summary.phoneVerified && summary.emailVerified,
       };
       localStorage.setItem('alquila_user', JSON.stringify(updated));
       return updated;
@@ -98,12 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string;
       displayName: string;
       phone: string;
+      acceptTerms: true;
     }) => {
       setLoading(true);
       try {
         const res = await api<{ token: string; user: User }>('/auth/register', {
           method: 'POST',
-          body: JSON.stringify({ ...data, acceptTerms: true }),
+          body: JSON.stringify(data),
           auth: false,
         });
         persist(res.user, res.token);

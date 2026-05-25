@@ -4,10 +4,21 @@
   height: 100%;
   min-height: 180px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 55%, rgba(0, 0, 0, 0.08) 100%);
+    radial-gradient(circle at 20% 18%, rgba(255, 230, 122, 0.38), transparent 30%),
+    radial-gradient(circle at 82% 22%, rgba(249, 115, 22, 0.24), transparent 22%),
+    linear-gradient(145deg, rgba(11, 47, 27, 0.88) 0%, rgba(21, 128, 61, 0.78) 45%, rgba(245, 158, 11, 0.18) 100%);
   border-radius: inherit;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.rush-bg-glow {
+  position: absolute;
+  inset: auto -12% -36% auto;
+  width: 65%;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.34), transparent 66%);
+  filter: blur(8px);
 }
 
 .rush-bg-icons {
@@ -28,6 +39,25 @@
   font-size: clamp(1.5rem, 3vw, 2.75rem);
   animation: iconFloat 3s ease-in-out infinite;
   animation-delay: calc(var(--i, 0) * 0.25s);
+}
+
+.rush-city {
+  position: absolute;
+  inset: auto 0 1.2rem 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0 1rem;
+  opacity: 0.28;
+}
+
+.rush-building {
+  width: calc(12% + (var(--i, 0) * 1.8%));
+  height: calc(18% + (var(--i, 0) * 6%));
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.08));
+  box-shadow: inset 0 -10px 12px rgba(0, 0, 0, 0.15);
 }
 
 .speed-lines {
@@ -59,43 +89,201 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 38%;
-  height: 3rem;
+  bottom: 31%;
+  height: 5rem;
 }
 
 .rush-scooter {
   position: absolute;
   left: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  bottom: 0.25rem;
   animation: rushLane 2.4s ease-in-out infinite;
   will-change: left;
 }
 
-.rush-rider {
-  font-size: clamp(2rem, 4vw, 3rem);
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+.rush-flare {
+  position: absolute;
+  left: -1rem;
+  top: 1.2rem;
+  width: 4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 230, 122, 0.85));
+  filter: blur(2px);
+  opacity: 0.85;
 }
 
-.rush-box {
-  font-size: clamp(1rem, 2vw, 1.5rem);
-  animation: boxBounce 0.35s ease-in-out infinite alternate;
+.rush-delivery {
+  position: relative;
+  width: clamp(5.75rem, 16vw, 8rem);
+  height: clamp(3.4rem, 10vw, 4.8rem);
+  transform-origin: center;
+}
+
+.rush-rider-head {
+  position: absolute;
+  top: 0.1rem;
+  left: 2.65rem;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fef3c7, #f97316);
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.12);
+}
+
+.rush-rider-body {
+  position: absolute;
+  top: 0.95rem;
+  left: 2.2rem;
+  width: 1.25rem;
+  height: 1.35rem;
+  border-radius: 0.8rem 0.8rem 0.45rem 0.45rem;
+  background: linear-gradient(180deg, #facc15, #f59e0b);
+  transform: skew(-8deg);
+}
+
+.rush-backpack {
+  position: absolute;
+  top: 0.8rem;
+  left: 1.1rem;
+  width: 1.3rem;
+  height: 1.55rem;
+  border-radius: 0.45rem;
+  background: linear-gradient(180deg, #f97316, #ea580c);
+  box-shadow: 0 4px 10px rgba(124, 45, 18, 0.22);
+  animation: backpackBounce 0.35s ease-in-out infinite alternate;
+}
+
+.rush-backpack::before {
+  content: '';
+  position: absolute;
+  top: 0.18rem;
+  left: 0.18rem;
+  right: 0.18rem;
+  height: 0.36rem;
+  border-radius: 0.3rem;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.rush-backpack-mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+.rush-handlebar {
+  position: absolute;
+  top: 1.18rem;
+  left: 4.35rem;
+  width: 0.8rem;
+  height: 0.16rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  transform: rotate(18deg);
+}
+
+.rush-seat {
+  position: absolute;
+  top: 1.75rem;
+  left: 2.9rem;
+  width: 1.05rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: #0f172a;
+}
+
+.rush-frame {
+  position: absolute;
+  top: 2rem;
+  left: 1.55rem;
+  width: 3.65rem;
+  height: 0.34rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fde68a, #f97316 60%, #facc15);
+}
+
+.rush-frame::before {
+  content: '';
+  position: absolute;
+  left: 1.55rem;
+  top: -0.5rem;
+  width: 0.25rem;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  transform: rotate(24deg);
+}
+
+.rush-frame::after {
+  content: '';
+  position: absolute;
+  right: 0.4rem;
+  top: -0.42rem;
+  width: 0.22rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  transform: rotate(-22deg);
+}
+
+.rush-deck {
+  position: absolute;
+  top: 2.3rem;
+  left: 1.15rem;
+  width: 4.5rem;
+  height: 0.32rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.25), rgba(245, 158, 11, 0.95));
+}
+
+.rush-wheel {
+  position: absolute;
+  bottom: 0.1rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: #0f172a;
+  border: 0.18rem solid #f8fafc;
+  box-shadow: inset 0 0 0 0.16rem #334155;
+  animation: wheelSpin 0.55s linear infinite;
+}
+
+.rush-wheel-back {
+  left: 1.1rem;
+}
+
+.rush-wheel-front {
+  right: 0.7rem;
 }
 
 .rush-trail {
   position: absolute;
   top: 12px;
   right: 12px;
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  color: #fef08a;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 0.35rem 0.65rem;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  color: #fff7ed;
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.9), rgba(245, 158, 11, 0.7));
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(124, 45, 18, 0.22);
   animation: trailPulse 1s ease-in-out infinite;
+}
+
+.rush-trail span {
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.rush-trail strong {
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
 .rush-stats {
@@ -114,14 +302,29 @@
 }
 
 .rush-stats strong {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.rush-burst {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 0.32rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  backdrop-filter: blur(6px);
 }
 
 @keyframes rushLane {
   0% { left: 4%; transform: scaleX(1); }
-  45% { left: calc(100% - 4.5rem); transform: scaleX(1); }
-  50% { left: calc(100% - 4.5rem); transform: scaleX(-1); }
+  45% { left: calc(100% - 6rem); transform: scaleX(1); }
+  50% { left: calc(100% - 6rem); transform: scaleX(-1); }
   95% { left: 4%; transform: scaleX(-1); }
   100% { left: 4%; transform: scaleX(1); }
 }
@@ -132,9 +335,9 @@
   100% { transform: translateX(-120px); opacity: 0; }
 }
 
-@keyframes boxBounce {
+@keyframes backpackBounce {
   from { transform: translateY(0); }
-  to { transform: translateY(-5px); }
+  to { transform: translateY(-4px); }
 }
 
 @keyframes trailPulse {
@@ -145,6 +348,11 @@
 @keyframes iconFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
+}
+
+@keyframes wheelSpin {
+  from { transform: rotate(0); }
+  to { transform: rotate(360deg); }
 }
 
 @media (min-width: 768px) {
@@ -159,6 +367,10 @@
 
   .rush-stats strong {
     font-size: 0.95rem;
+  }
+
+  .rush-burst {
+    font-size: 0.74rem;
   }
 }
 
@@ -175,5 +387,10 @@
 
   .rush-lane {
     bottom: 42%;
+  }
+
+  .rush-delivery {
+    width: 8.4rem;
+    height: 5rem;
   }
 }

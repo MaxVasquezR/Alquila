@@ -1,6 +1,7 @@
 import { AppDataSource } from '../../config/data-source';
 import { env } from '../../config/env';
 import { Product } from '../../entities/product.entity';
+import { ProductImage } from '../../entities/product-image.entity';
 import { User } from '../../entities/user.entity';
 import { Ad } from '../../entities/ad.entity';
 import {
@@ -28,10 +29,15 @@ import {
 
 export class ProductsService {
   private productRepo = AppDataSource.getRepository(Product);
+  private productImageRepo = AppDataSource.getRepository(ProductImage);
   private userRepo = AppDataSource.getRepository(User);
 
   async create(ownerId: string, input: CreateProductInput) {
+    await trustService.assertCanPublish(ownerId);
+    await this.syncExpiredProducts();
     await this.enforceFreeProductLimit(ownerId);
+    const needsPay = await listingCheckoutService.needsPayment(ownerId);
+    const imageUrls = this.resolveImageUrls(input);
 
     const { publicLat, publicLng } = fuzzCoordinates(
       input.exactLat,
@@ -55,28 +61,43 @@ export class ProductsService {
       exactLatEncrypted: encryptNumber(input.exactLat),
       exactLngEncrypted: encryptNumber(input.exactLng),
       ownerId,
-      status: ProductStatus.ACTIVE,
-      imageUrl: (input as CreateProductInput & { imageUrl?: string }).imageUrl,
+      status: needsPay ? ProductStatus.PENDING_PAYMENT : ProductStatus.ACTIVE,
+      imageUrl: imageUrls[0],
+      coverImageUrl: imageUrls[0],
+      publishedAt: needsPay ? undefined : new Date(),
+      expiresAt: needsPay ? undefined : this.getListingExpiryDate(),
       availableToday: true,
     });
 
     await this.productRepo.save(product);
+    await this.saveProductImages(product.id, imageUrls);
+    if (!needsPay) {
+      await listingCheckoutService.consumeFreeListing(ownerId);
+    }
     const withOwner = await this.findByIdWithOwner(product.id);
-    return toProductPublicDto(withOwner!);
+    return {
+      ...toProductPublicDto(withOwner!),
+      paymentRequired: needsPay,
+      listingFeePen: needsPay ? env.listingFeePen : 0,
+    };
   }
 
   /** Publicación express: 4 campos + defaults seguros de privacidad */
   async createExpress(ownerId: string, input: CreateProductExpressInput) {
     await trustService.assertCanPublish(ownerId);
+    await this.syncExpiredProducts();
     await this.enforceFreeProductLimit(ownerId);
     const needsPay = await listingCheckoutService.needsPayment(ownerId);
     const coords = getDistrictCoords(input.district);
     const exactAddress = `Zona ${input.district} (completar en chat)`;
     const { publicLat, publicLng } = fuzzCoordinates(coords.lat, coords.lng);
+    const imageUrls = this.resolveImageUrls(input);
 
     const product = this.productRepo.create({
       title: input.title,
-      description: `${input.title} — alquiler en ${input.district}. Contactar por chat.`,
+      description:
+        input.description?.trim() ||
+        `${input.title} — alquiler en ${input.district}. Contactar por chat.`,
       category: input.category,
       pricePerDay: input.pricePerDay.toFixed(2),
       district: input.district,
@@ -88,11 +109,18 @@ export class ProductsService {
       exactLngEncrypted: encryptNumber(coords.lng),
       ownerId,
       status: needsPay ? ProductStatus.PENDING_PAYMENT : ProductStatus.ACTIVE,
-      imageUrl: input.imageUrl || undefined,
+      imageUrl: imageUrls[0],
+      coverImageUrl: imageUrls[0],
+      publishedAt: needsPay ? undefined : new Date(),
+      expiresAt: needsPay ? undefined : this.getListingExpiryDate(),
       availableToday: input.availableToday ?? true,
     });
 
     await this.productRepo.save(product);
+    await this.saveProductImages(product.id, imageUrls);
+    if (!needsPay) {
+      await listingCheckoutService.consumeFreeListing(ownerId);
+    }
     await auditService.log(ownerId, AuditAction.PRODUCT_PUBLISHED, 'product', product.id, {
       needsPayment: needsPay,
     });
@@ -106,9 +134,11 @@ export class ProductsService {
   }
 
   async list(query: ListProductsQuery) {
+    await this.syncExpiredProducts();
     const qb = this.productRepo
       .createQueryBuilder('product')
       .innerJoinAndSelect('product.owner', 'owner')
+      .leftJoinAndSelect('product.images', 'images')
       .where('product.status = :status', { status: ProductStatus.ACTIVE });
 
     if (query.district) {
@@ -174,6 +204,7 @@ export class ProductsService {
       data: products.map((p) =>
         toProductPublicDto(p, {
           isFeatured: query.featured || featuredIds.has(p.id),
+          promotionLabel: query.featured || featuredIds.has(p.id) ? 'Super Promo' : undefined,
         }),
       ),
       pagination: {
@@ -186,6 +217,7 @@ export class ProductsService {
   }
 
   async getByIdPublic(id: string) {
+    await this.syncExpiredProducts();
     const product = await this.findByIdWithOwner(id);
     if (!product || product.status !== ProductStatus.ACTIVE) {
       throw new AppError(404, 'Product not found', 'NOT_FOUND');
@@ -194,9 +226,10 @@ export class ProductsService {
   }
 
   async getMyProducts(ownerId: string) {
+    await this.syncExpiredProducts();
     const products = await this.productRepo.find({
       where: { ownerId },
-      relations: { owner: true },
+      relations: { owner: true, images: true },
       order: { createdAt: 'DESC' },
     });
 
@@ -213,10 +246,17 @@ export class ProductsService {
   async update(ownerId: string, productId: string, input: UpdateProductInput) {
     const product = await this.productRepo.findOne({
       where: { id: productId, ownerId },
-      relations: { owner: true },
+      relations: { owner: true, images: true },
     });
     if (!product) {
       throw new AppError(404, 'Product not found', 'NOT_FOUND');
+    }
+    if (![ProductStatus.DRAFT, ProductStatus.PENDING_PAYMENT].includes(product.status)) {
+      throw new AppError(
+        403,
+        'La publicación ya está activa y no se puede editar',
+        'PUBLICATION_LOCKED',
+      );
     }
 
     if (input.title) product.title = input.title;
@@ -228,7 +268,13 @@ export class ProductsService {
     if (input.pricePerHour !== undefined) {
       product.pricePerHour = input.pricePerHour.toFixed(2);
     }
-    if (input.status) product.status = input.status;
+    if (input.status) {
+      const allowedStatuses = [ProductStatus.DRAFT, ProductStatus.PENDING_PAYMENT, ProductStatus.INACTIVE];
+      if (!allowedStatuses.includes(input.status)) {
+        throw new AppError(400, 'Estado no permitido', 'INVALID_STATUS');
+      }
+      product.status = input.status;
+    }
 
     if (
       input.exactLat !== undefined &&
@@ -286,7 +332,57 @@ export class ProductsService {
   private async findByIdWithOwner(id: string) {
     return this.productRepo.findOne({
       where: { id },
-      relations: { owner: true },
+      relations: { owner: true, images: true },
     });
+  }
+
+  async syncExpiredProducts() {
+    const expiredProducts = await this.productRepo.find({
+      where: { status: ProductStatus.ACTIVE },
+    });
+    const now = new Date();
+    const stale = expiredProducts.filter(
+      (product) => product.expiresAt && product.expiresAt.getTime() <= now.getTime(),
+    );
+    if (stale.length === 0) return;
+
+    for (const product of stale) {
+      product.status = ProductStatus.EXPIRED;
+      await this.productRepo.save(product);
+      await auditService.log(product.ownerId, AuditAction.PRODUCT_EXPIRED, 'product', product.id);
+    }
+  }
+
+  private resolveImageUrls(
+    input: (CreateProductInput | CreateProductExpressInput) & {
+      imageUrls?: string[];
+      imageUrl?: string;
+    },
+  ) {
+    if (input.imageUrls && input.imageUrls.length > 0) {
+      return input.imageUrls.slice(0, env.maxProductImages);
+    }
+    if (input.imageUrl) {
+      return [input.imageUrl];
+    }
+    return [];
+  }
+
+  private async saveProductImages(productId: string, imageUrls: string[]) {
+    if (imageUrls.length === 0) return;
+    const images = imageUrls.slice(0, env.maxProductImages).map((url, index) =>
+      this.productImageRepo.create({
+        productId,
+        url,
+        sortOrder: index,
+      }),
+    );
+    await this.productImageRepo.save(images);
+  }
+
+  private getListingExpiryDate(from = new Date()) {
+    const expiresAt = new Date(from);
+    expiresAt.setDate(expiresAt.getDate() + env.listingDurationDays);
+    return expiresAt;
   }
 }

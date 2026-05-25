@@ -48,54 +48,101 @@ export function Home() {
       <section className="hero-market">
         <div className="container-wide hero-market-inner">
           <div className="hero-market-copy">
-            <span className="hero-badge">⚡ Mercado express Lima</span>
+            <span className="hero-badge">⚡ Publica hoy · Destaca hoy · Cierra más rápido</span>
             <h1>
-              Alquila hoy.
+              Publica hoy.
               <br />
-              Recoge en minutos.
+              Destaca.
+              <br />
+              Cierra hoy.
             </h1>
-            <p>Herramientas, fiestas, construcción — sin delivery, acuerdas en chat.</p>
+            <p>
+              Alquila está hecha para convertir más: publicación estándar para entrar al mercado y
+              `Super Promo` para subir al frente, captar más vistas y cerrar alquileres antes.
+            </p>
+            <div className="hero-speed-line">Visibilidad comercial, trato express y activación en minutos.</div>
+            <div className="hero-actions">
+              <Link to={user ? '/publicar' : '/registro'} className="btn btn-express hero-primary-cta">
+                {user ? 'Publicar y destacar' : 'Crea tu cuenta'}
+              </Link>
+              <a href="#productos" className="btn btn-ghost hero-secondary-cta">
+                Ver equipos disponibles
+              </a>
+            </div>
+            <div className="hero-proof">
+              <span>1 publicación gratis en tu primer mes</span>
+              <span>Super Promo 7 días</span>
+              <span>Trato express</span>
+            </div>
             <div className="hero-stats">
               <div>
                 <strong>{products.length || '15+'}</strong>
-                <span>equipos cerca</span>
+                <span>equipos listos</span>
               </div>
               <div>
-                <strong>500m</strong>
-                <span>ubicación difusa</span>
+                <strong>Top visibilidad</strong>
+                <span>sube al frente con promo</span>
               </div>
               <div>
-                <strong>2 min</strong>
-                <span>para contactar</span>
+                <strong>30 días</strong>
+                <span>publicación estándar</span>
               </div>
             </div>
           </div>
           <div className="hero-market-visual">
             <ExpressRush />
             <div className="hero-float-card">
-              <span>🔥 Disponible hoy</span>
-              <strong>Andamio 2m · S/55</strong>
-              <small>Los Olivos</small>
+              <span>🚀 Super Promo activa</span>
+              <strong>Top home · Andamio 2m · S/55</strong>
+              <small>Los Olivos · más visibilidad, más cierre</small>
             </div>
           </div>
         </div>
       </section>
 
-      {!user && (
-        <div className="container demo-banner">
-          <div className="demo-banner-inner">
-            <span>🎯 Modo demo</span>
-            <p>
-              <strong>dueno.demo@alquila.pe</strong> o <strong>cliente.demo@alquila.pe</strong>
-              {' · pass: '}
-              <strong>demo12345</strong>
-            </p>
-            <Link to="/entrar" className="btn btn-sm btn-primary">
-              Probar ahora
-            </Link>
+      <section className="container-wide trust-strip">
+        <article className="trust-pill card">
+          <strong>Beneficio real controlado</strong>
+          <p>La publicación gratis solo aplica con correo, celular y KYC verificados.</p>
+        </article>
+        <article className="trust-pill card">
+          <strong>Super Promo para vender más</strong>
+          <p>Impulsa tu aviso por 7 días para ganar visibilidad en la parte alta.</p>
+        </article>
+        <article className="trust-pill card">
+          <strong>Privacidad protegida</strong>
+          <p>La dirección exacta no aparece en listados públicos y el trato queda dentro del chat.</p>
+        </article>
+      </section>
+
+      <section className="container quick-flow">
+        <div className="section-header quick-flow-header">
+          <div>
+            <h2 className="section-title">Cómo se mueve el trato</h2>
+            <p className="section-subtitle">Hecho para cerrar alquileres rápidos sin sacrificar confianza.</p>
           </div>
+          <Link to="/como-funciona" className="quick-flow-link">
+            Ver flujo completo
+          </Link>
         </div>
-      )}
+        <div className="quick-flow-grid">
+          <article className="card quick-flow-card">
+            <span>1</span>
+            <strong>Publica con 3 imágenes</strong>
+            <p>Sube fotos reales desde tu móvil para dar más confianza desde el primer vistazo.</p>
+          </article>
+          <article className="card quick-flow-card">
+            <span>2</span>
+            <strong>Activa estándar o gratis</strong>
+            <p>Si estás dentro de tu primer mes y validado, arrancas con tu primera publicación gratis.</p>
+          </article>
+          <article className="card quick-flow-card">
+            <span>3</span>
+            <strong>Impulsa con Super Promo</strong>
+            <p>Destaca tu publicación por 7 días para aparecer arriba y mover más chats.</p>
+          </article>
+        </div>
+      </section>
 
       <div className="container home-search-wrap">
         <div className="home-search">
@@ -158,9 +205,9 @@ export function Home() {
         </label>
       </div>
 
-      <p className="container trust-line">🔒 Dirección exacta solo si el dueño acepta en chat</p>
+      <p className="container trust-line">🔒 Dirección exacta y datos sensibles solo dentro del flujo de trato.</p>
 
-      <section className="container products-section">
+      <section id="productos" className="container products-section">
         <div className="section-header">
           <h2 className="section-title">
             {category ? CATEGORIES.find((c) => c.id === category)?.label : 'Cerca de ti'}
@@ -200,6 +247,31 @@ export function Home() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="container trust-summary">
+        <div className="section-header">
+          <div>
+            <h2 className="section-title">Confianza visible para cerrar más rápido</h2>
+            <p className="section-subtitle">
+              Lo comercial funciona mejor cuando el usuario siente reglas claras, verificación y soporte.
+            </p>
+          </div>
+        </div>
+        <div className="trust-summary-grid">
+          <article className="card trust-summary-card">
+            <strong>Publicaciones verificadas</strong>
+            <p>Para ofrecer productos pedimos cuenta validada antes de abrir el mercado.</p>
+          </article>
+          <article className="card trust-summary-card">
+            <strong>Acuerdo por etapas</strong>
+            <p>Precio, recogida y cierre del trato se registran en chat para bajar malentendidos.</p>
+          </article>
+          <article className="card trust-summary-card">
+            <strong>Soporte y reglas</strong>
+            <p>Privacidad, seguridad, reportes y ayuda visibles desde cualquier dispositivo.</p>
+          </article>
+        </div>
       </section>
     </div>
   );

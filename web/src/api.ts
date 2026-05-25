@@ -1,4 +1,7 @@
-const API = '/api/v1';
+const API = `${(import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')}/api/v1`.replace(
+  /^\/api/,
+  '/api',
+);
 
 export function getToken(): string | null {
   return localStorage.getItem('alquila_token');
@@ -23,9 +26,14 @@ export class ApiError extends Error {
 function formatApiError(data: {
   error?: string;
   details?: Record<string, string[] | undefined>;
-}): string {
+}, status?: number): string {
   const details = data.details;
-  if (!details) return data.error ?? 'Error en la solicitud';
+  if (!details) {
+    if (!data.error && status && status >= 500) {
+      return 'El backend no responde o está caído';
+    }
+    return data.error ?? 'Error en la solicitud';
+  }
 
   const labels: Record<string, string> = {
     title: 'Título',
@@ -60,10 +68,13 @@ export async function api<T>(
   path: string,
   options: RequestInit & { auth?: boolean } = {},
 ): Promise<T> {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (options.auth !== false) {
     const token = getToken();
@@ -73,13 +84,15 @@ export async function api<T>(
   const res = await fetch(`${API}${path}`, {
     ...options,
     headers,
+  }).catch(() => {
+    throw new ApiError('No se pudo conectar con el backend', 0, 'NETWORK_ERROR');
   });
 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
     throw new ApiError(
-      formatApiError(data),
+      formatApiError(data, res.status),
       res.status,
       data.code,
       data.details,

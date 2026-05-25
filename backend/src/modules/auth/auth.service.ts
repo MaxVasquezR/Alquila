@@ -10,7 +10,9 @@ import { auditService } from '../../services/audit.service';
 import { AuditAction } from '../../types/enums';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { env } from '../../config/env';
+import { emailService, hashEmailToken } from '../../services/email.service';
 
 const SALT_ROUNDS = 12;
 
@@ -42,12 +44,17 @@ export class AuthService {
       phoneHash,
       role: input.role,
       acceptedTermsAt: new Date(),
+      emailVerified: false,
       phoneVerified: false,
     });
 
     await this.userRepo.save(user);
+    const verification = await this.sendEmailVerification(user.id);
     await auditService.log(user.id, AuditAction.REGISTER, 'user', user.id);
-    return this.buildAuthResponse(user);
+    return {
+      ...(await this.buildAuthResponse(user)),
+      emailVerificationPreviewUrl: verification.previewUrl,
+    };
   }
 
   async login(input: LoginInput) {
@@ -65,6 +72,45 @@ export class AuthService {
 
     await auditService.log(user.id, AuditAction.LOGIN, 'user', user.id);
     return this.buildAuthResponse(user);
+  }
+
+  async sendEmailVerification(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new AppError(404, 'User not found', 'NOT_FOUND');
+    if (user.emailVerified) {
+      return { emailVerified: true, previewUrl: undefined };
+    }
+
+    const token = crypto.randomBytes(24).toString('hex');
+    user.emailVerificationTokenHash = hashEmailToken(token);
+    user.emailVerificationSentAt = new Date();
+    await this.userRepo.save(user);
+    const result = await emailService.sendVerificationEmail(user.email, token);
+    await auditService.log(user.id, AuditAction.EMAIL_VERIFICATION_SENT, 'user', user.id);
+    return {
+      emailVerified: false,
+      previewUrl: result.previewUrl,
+    };
+  }
+
+  async verifyEmailToken(token: string) {
+    const tokenHash = hashEmailToken(token);
+    const user = await this.userRepo.findOne({
+      where: { emailVerificationTokenHash: tokenHash },
+    });
+    if (!user) {
+      throw new AppError(400, 'Token de verificación inválido o expirado', 'INVALID_TOKEN');
+    }
+    if (user.emailVerified) {
+      return { emailVerified: true };
+    }
+
+    user.emailVerified = true;
+    user.emailVerifiedAt = new Date();
+    user.emailVerificationTokenHash = undefined;
+    await this.userRepo.save(user);
+    await auditService.log(user.id, AuditAction.EMAIL_VERIFIED, 'user', user.id);
+    return { emailVerified: true };
   }
 
   private async dealsClosedCount(userId: string) {
@@ -89,6 +135,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        emailVerified: user.emailVerified,
         displayName: user.displayName,
         role: user.role,
         kycVerified: user.kycVerified,
@@ -98,7 +145,7 @@ export class AuthService {
         membershipTier: user.membershipTier,
         membershipExpiresAt: user.membershipExpiresAt,
         dealsClosedCount: await this.dealsClosedCount(user.id),
-        canPublish: user.kycVerified && user.phoneVerified,
+        canPublish: user.kycVerified && user.phoneVerified && user.emailVerified,
       },
     };
   }

@@ -2,7 +2,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authMiddleware } from '../../middleware/auth';
 import { validateBody } from '../../middleware/validate';
-import { registerSchema, loginSchema, otpSendSchema, otpVerifySchema } from './auth.schemas';
+import {
+  registerSchema,
+  loginSchema,
+  otpSendSchema,
+  otpVerifySchema,
+  emailVerifySchema,
+} from './auth.schemas';
 import { AuthService } from './auth.service';
 import { otpService } from './otp.service';
 
@@ -64,6 +70,31 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       res.json(await otpService.verify(req.user!.userId, req.body.phone, req.body.code));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/email/send',
+  authMiddleware,
+  authLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await authService.sendEmailVerification(req.user!.userId));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/email/verify',
+  validateBody(emailVerifySchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await authService.verifyEmailToken(req.body.token));
     } catch (err) {
       next(err);
     }

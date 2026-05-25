@@ -11,6 +11,8 @@ export interface Product {
   id: string;
   title: string;
   imageUrl?: string;
+  coverImageUrl?: string;
+  imageUrls: string[];
   availableToday: boolean;
   description: string;
   category: string;
@@ -20,8 +22,11 @@ export interface Product {
   locationLabel: string;
   location: { lat: number; lng: number };
   status: string;
+  publishedAt?: string;
+  expiresAt?: string;
   owner: PublicOwner;
   isFeatured?: boolean;
+  promotionLabel?: string;
   paymentRequired?: boolean;
   listingFeePen?: number;
 }
@@ -31,6 +36,7 @@ export type KycStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
 export interface User {
   id: string;
   email: string;
+  emailVerified?: boolean;
   displayName: string;
   kycVerified: boolean;
   kycStatus?: KycStatus;
@@ -45,6 +51,7 @@ export interface User {
 export interface AccountSummary {
   id: string;
   email: string;
+  emailVerified: boolean;
   displayName: string;
   avatarUrl?: string;
   kycStatus: KycStatus;
@@ -85,7 +92,11 @@ export interface ListingPaymentResult {
   amountPen?: number;
   qrPayload?: string;
   provider?: string;
+  plan?: string;
   freeListing?: boolean;
   status?: string;
   expiresInMinutes?: number;
+  durationDays?: number;
+  listingExpiresAt?: string;
+  promoEndsAt?: string;
 }

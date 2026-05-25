@@ -17,13 +17,17 @@ export function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<'view' | 'express'>('view');
   const [moveInDate, setMoveInDate] = useState('');
+  const [selectedImage, setSelectedImage] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!id) return;
     api<Product>(`/products/${id}`, { auth: false })
-      .then(setProduct)
+      .then((value) => {
+        setProduct(value);
+        setSelectedImage(value.coverImageUrl ?? value.imageUrl ?? value.imageUrls[0] ?? '');
+      })
       .catch(() => setError('No encontrado'))
       .finally(() => setLoading(false));
   }, [id]);
@@ -84,15 +88,31 @@ export function ProductDetail() {
           <ProductArt
             title={product.title}
             category={product.category}
-            imageUrl={product.imageUrl}
+            imageUrl={selectedImage || product.coverImageUrl || product.imageUrl}
+            imageUrls={product.imageUrls}
             size="lg"
           />
+          {product.imageUrls.length > 1 && (
+            <div className="detail-gallery-strip">
+              {product.imageUrls.map((image, index) => (
+                <button
+                  key={image}
+                  type="button"
+                  className={`detail-gallery-thumb${(selectedImage || product.coverImageUrl || product.imageUrl) === image ? ' active' : ''}`}
+                  onClick={() => setSelectedImage(image)}
+                >
+                  <img src={image} alt={`${product.title} ${index + 1}`} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <article className="card detail-card">
         <div className="detail-badges">
           {product.availableToday && <span className="badge badge-today">⚡ Disponible hoy</span>}
           {product.owner.kycVerified && <span className="badge badge-verified">Dueño verificado</span>}
+          {product.isFeatured && <span className="badge badge-premium">{product.promotionLabel ?? 'Super Promo'}</span>}
           <span className="badge badge-cat">{categoryLabel(product.category)}</span>
         </div>
 
@@ -116,6 +136,34 @@ export function ProductDetail() {
             )}
           </span>
         </div>
+
+        <div className="detail-trust-grid">
+          <div className="detail-trust-card">
+            <strong>Trato más seguro</strong>
+            <ul className="trust-list">
+              <li>Negocia precio y hora dentro del chat.</li>
+              <li>La dirección exacta no aparece en el listado público.</li>
+              <li>Puedes reportar o bloquear si algo te parece riesgoso.</li>
+            </ul>
+          </div>
+          <div className="detail-trust-card">
+            <strong>Qué deberías confirmar</strong>
+            <ul className="trust-list">
+              <li>{product.availableToday ? 'Disponible hoy' : 'Coordina disponibilidad con el dueño'}.</li>
+              <li>Estado real del equipo y qué accesorios incluye.</li>
+              <li>Horario de recojo, entrega y devolución.</li>
+            </ul>
+          </div>
+        </div>
+        {product.isFeatured && (
+          <div className="publish-trust-box" style={{ marginTop: 16 }}>
+            <strong>Super Promo activa</strong>
+            <ul className="trust-list">
+              <li>Este aviso tiene impulso comercial y visibilidad destacada.</li>
+              <li>Normalmente recibe más vistas y más chats que una publicación estándar.</li>
+            </ul>
+          </div>
+        )}
 
         {!isOwner && step === 'view' && (
           <button

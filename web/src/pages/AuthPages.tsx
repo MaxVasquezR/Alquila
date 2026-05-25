@@ -83,6 +83,7 @@ export function Register() {
         password: fd.get('password') as string,
         displayName: fd.get('displayName') as string,
         phone: fd.get('phone') as string,
+        acceptTerms: true,
       });
       navigate('/verificar');
     } catch (err) {
@@ -113,9 +114,13 @@ export function Register() {
           <label className="label">Contraseña</label>
           <input className="input" name="password" type="password" required minLength={8} />
         </div>
-        <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-          Al registrarte aceptas que Alquila es un marketplace P2P sin responsabilidad en las transacciones.
-        </p>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+          <input type="checkbox" required />
+          <span>
+            Acepto los <Link to="/terminos" style={{ color: 'var(--accent)' }}>términos</Link> y la{' '}
+            <Link to="/privacidad" style={{ color: 'var(--accent)' }}>política de privacidad</Link>.
+          </span>
+        </label>
         <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
           {loading ? 'Creando...' : 'Registrarse'}
         </button>

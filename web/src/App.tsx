@@ -14,6 +14,13 @@ import { RepeatClients } from './pages/RepeatClients';
 import { VerifyAccount } from './pages/VerifyAccount';
 import { AccountPage } from './pages/AccountPage';
 import { RentalRequestsPage } from './pages/RentalRequestsPage';
+import {
+  HelpPage,
+  HowItWorksPage,
+  PrivacyPage,
+  SafetyPage,
+  TermsPage,
+} from './pages/TrustPages';
 import './pages/Chat.css';
 
 export default function App() {
@@ -35,6 +42,11 @@ export default function App() {
         <Route path="notificaciones" element={<NotificationsPage />} />
         <Route path="clientes" element={<RepeatClients />} />
         <Route path="chat/:threadId" element={<Chat />} />
+        <Route path="como-funciona" element={<HowItWorksPage />} />
+        <Route path="seguridad" element={<SafetyPage />} />
+        <Route path="privacidad" element={<PrivacyPage />} />
+        <Route path="terminos" element={<TermsPage />} />
+        <Route path="ayuda" element={<HelpPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

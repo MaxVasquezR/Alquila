@@ -23,6 +23,30 @@
   flex-wrap: wrap;
 }
 
+.chat-safety-card,
+.chat-action-panel {
+  margin-top: 0.75rem;
+}
+
+.chat-safety-card strong,
+.chat-action-panel strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.chat-safety-card p,
+.chat-action-panel p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-bottom: 0.75rem;
+}
+
+.chat-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 @media (min-width: 480px) {
   .chat-header-row {
     flex-direction: row;
@@ -44,6 +68,10 @@
 
   .chat-messages {
     max-height: 55vh;
+  }
+
+  .chat-input-row {
+    bottom: 8px;
   }
 }
 

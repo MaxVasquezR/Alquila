@@ -11,16 +11,20 @@ const categorySchema = z
   .string()
   .refine(isValidCategory, { message: 'Categoría no válida' });
 
+const imageUrlSchema = z.string().url().or(z.string().startsWith('http://')).or(z.string().startsWith('https://'));
+
 export const createProductExpressSchema = z.object({
   title: z.string().min(3).max(120),
   category: categorySchema,
   pricePerDay: z.coerce.number().positive(),
   district: districtSchema,
+  description: z.string().min(12).max(600).optional(),
   imageUrl: z
     .string()
     .optional()
     .transform((v) => (v && v.length > 0 ? v : undefined)),
-  availableToday: z.boolean().default(true),
+  imageUrls: z.array(imageUrlSchema).max(3).optional(),
+  availableToday: z.boolean().optional().default(true),
   locationReference: z.string().max(100).optional(),
 });
 
@@ -35,6 +39,7 @@ export const createProductSchema = z.object({
   exactAddress: z.string().min(5).max(300),
   exactLat: z.number().min(-13.5).max(-11.5),
   exactLng: z.number().min(-77.5).max(-76.5),
+  imageUrls: z.array(imageUrlSchema).max(3).optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({

@@ -13,6 +13,7 @@ import { ProductStatus } from '../types/enums';
 import { User } from './user.entity';
 import { Ad } from './ad.entity';
 import { ChatThread } from './chat-thread.entity';
+import { ProductImage } from './product-image.entity';
 
 @Entity('products')
 @Index(['district', 'status'])
@@ -26,6 +27,9 @@ export class Product {
 
   @Column({ name: 'image_url', nullable: true })
   imageUrl?: string;
+
+  @Column({ name: 'cover_image_url', nullable: true })
+  coverImageUrl?: string;
 
   @Column({ name: 'available_today', default: true })
   availableToday!: boolean;
@@ -75,9 +79,15 @@ export class Product {
   @Column({
     type: 'varchar',
     length: 20,
-    default: ProductStatus.ACTIVE,
+    default: ProductStatus.DRAFT,
   })
   status!: ProductStatus;
+
+  @Column({ name: 'published_at', type: 'datetime', nullable: true })
+  publishedAt?: Date;
+
+  @Column({ name: 'expires_at', type: 'datetime', nullable: true })
+  expiresAt?: Date;
 
   @Column({ name: 'owner_id' })
   ownerId!: string;
@@ -88,6 +98,9 @@ export class Product {
 
   @OneToMany(() => Ad, (ad) => ad.product)
   ads!: Ad[];
+
+  @OneToMany(() => ProductImage, (image) => image.product)
+  images!: ProductImage[];
 
   @OneToMany(() => ChatThread, (thread) => thread.product)
   chatThreads!: ChatThread[];

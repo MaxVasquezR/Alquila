@@ -5,6 +5,7 @@ import { useAuth } from '../auth';
 import { getSocket } from '../socket';
 import { OWNER_TEMPLATES } from '../chat-templates';
 import { DealBar } from '../components/DealBar';
+import { useToast } from '../components/Toast';
 import type { ChatMessage } from '../types';
 import type { DealStatus } from '../deal-status';
 import './Chat.css';
@@ -23,12 +24,17 @@ interface ThreadInfo {
 export function Chat() {
   const { threadId } = useParams<{ threadId: string }>();
   const { user } = useAuth();
+  const toast = useToast();
   const [thread, setThread] = useState<ThreadInfo | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [location, setLocation] = useState<{ address: string; lat?: number; lng?: number } | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('Comportamiento sospechoso');
+  const [reportDetails, setReportDetails] = useState('');
+  const [blockOpen, setBlockOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadThread = useCallback(() => {
@@ -119,8 +125,7 @@ export function Chat() {
 
   async function reportUser() {
     if (!thread?.otherUserId) return;
-    const reason = window.prompt('Motivo del reporte (ej. no respondió, fraude)');
-    if (!reason?.trim()) return;
+    if (!reportReason.trim()) return;
     setBusy(true);
     try {
       await api('/reports', {
@@ -128,11 +133,14 @@ export function Chat() {
         body: JSON.stringify({
           reportedId: thread.otherUserId,
           threadId: thread.id,
-          reason: reason.trim(),
+          reason: reportReason.trim(),
+          details: reportDetails.trim() || undefined,
         }),
       });
       setError('');
-      alert('Reporte enviado. Gracias.');
+      setReportOpen(false);
+      setReportDetails('');
+      toast('Reporte enviado. Gracias por avisarnos.');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');
     } finally {
@@ -142,14 +150,14 @@ export function Chat() {
 
   async function blockUser() {
     if (!thread?.otherUserId) return;
-    if (!window.confirm('¿Bloquear a este usuario? No podrán chatear contigo.')) return;
     setBusy(true);
     try {
       await api('/reports/block', {
         method: 'POST',
         body: JSON.stringify({ blockedId: thread.otherUserId }),
       });
-      alert('Usuario bloqueado.');
+      setBlockOpen(false);
+      toast('Usuario bloqueado.');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');
     } finally {
@@ -199,6 +207,15 @@ export function Chat() {
     );
   }
 
+  const nextStepText =
+    thread?.dealStatus === 'INTERESTED'
+      ? 'Aún están negociando. Dejen por escrito precio, horario y condiciones.'
+      : thread?.dealStatus === 'AGREED'
+        ? 'El precio ya fue acordado. Confirma punto exacto y hora antes de salir.'
+        : thread?.dealStatus === 'PICKED_UP'
+          ? 'El equipo ya fue entregado. Mantengan el chat para registrar el cierre.'
+          : 'El trato terminó. Puedes revisar el historial o volver a contactar.';
+
   return (
     <div className="container chat-page">
       <Link to="/mensajes" style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>← Chats</Link>
@@ -209,14 +226,91 @@ export function Chat() {
           </p>
           {thread.otherUserId && thread.dealStatus !== 'CLOSED' && (
             <div className="chat-safety-btns">
-              <button type="button" className="btn btn-ghost btn-sm" onClick={reportUser} disabled={busy}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setBlockOpen(false);
+                  setReportOpen((prev) => !prev);
+                }}
+                disabled={busy}
+              >
                 Reportar
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={blockUser} disabled={busy}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setReportOpen(false);
+                  setBlockOpen((prev) => !prev);
+                }}
+                disabled={busy}
+              >
                 Bloquear
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {thread && (
+        <div className="card chat-safety-card">
+          <strong>Resumen del trato</strong>
+          <p>{nextStepText}</p>
+          <ul className="trust-list">
+            <li>Confirma precio, horario y condiciones antes de moverte.</li>
+            <li>No compartas códigos, claves ni documentos fuera del flujo acordado.</li>
+            <li>Si algo te parece riesgoso, reporta o bloquea desde este mismo chat.</li>
+          </ul>
+        </div>
+      )}
+
+      {reportOpen && (
+        <div className="card chat-action-panel">
+          <strong>Reportar usuario</strong>
+          <p>Describe brevemente el problema para que podamos revisar el incidente.</p>
+          <div className="field">
+            <label className="label">Motivo</label>
+            <input
+              className="input"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Ej: intento de fraude, presión fuera de la app"
+            />
+          </div>
+          <div className="field">
+            <label className="label">Detalle adicional (opcional)</label>
+            <textarea
+              className="textarea"
+              rows={3}
+              value={reportDetails}
+              onChange={(e) => setReportDetails(e.target.value)}
+              placeholder="Cuéntanos lo mínimo necesario para entender el caso."
+            />
+          </div>
+          <div className="chat-action-row">
+            <button type="button" className="btn btn-express" onClick={reportUser} disabled={busy}>
+              {busy ? 'Enviando...' : 'Enviar reporte'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setReportOpen(false)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {blockOpen && (
+        <div className="card chat-action-panel">
+          <strong>Bloquear usuario</strong>
+          <p>No podrán seguir chateando contigo desde este hilo si confirmas el bloqueo.</p>
+          <div className="chat-action-row">
+            <button type="button" className="btn btn-primary" onClick={blockUser} disabled={busy}>
+              {busy ? 'Bloqueando...' : 'Sí, bloquear'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setBlockOpen(false)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
 

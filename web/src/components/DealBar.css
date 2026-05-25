@@ -54,6 +54,12 @@
   font-size: 0.95rem;
 }
 
+.deal-next-step {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
 .deal-closed {
   text-align: center;
   font-weight: 600;

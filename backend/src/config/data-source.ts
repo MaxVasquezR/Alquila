@@ -15,11 +15,15 @@ import { PhoneOtp } from '../entities/phone-otp.entity';
 import { UserReport } from '../entities/user-report.entity';
 import { UserBlock } from '../entities/user-block.entity';
 import { Notification } from '../entities/notification.entity';
+import { ProductImage } from '../entities/product-image.entity';
+import { AdPayment } from '../entities/ad-payment.entity';
 
 const entities = [
   User,
   Product,
+  ProductImage,
   Ad,
+  AdPayment,
   ChatThread,
   ChatMessage,
   RentalRequest,
@@ -37,7 +41,10 @@ function buildOptions(): DataSourceOptions {
     synchronize: env.nodeEnv === 'development',
     logging: env.nodeEnv === 'development',
     entities,
-    migrations: ['src/migrations/*.ts'],
+    migrations:
+      env.nodeEnv === 'development'
+        ? ['src/migrations/*.ts']
+        : ['dist/migrations/*.js'],
     subscribers: [] as never[],
   };
 

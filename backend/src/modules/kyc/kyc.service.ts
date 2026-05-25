@@ -49,6 +49,13 @@ export class KycService {
     if (user.kycStatus === KycStatus.APPROVED) {
       return { alreadyVerified: true, ...await this.getStatus(userId) };
     }
+    if (env.isProduction && this.provider instanceof MockKycProvider) {
+      throw new AppError(
+        503,
+        'Proveedor KYC no configurado para producción',
+        'KYC_PROVIDER_UNAVAILABLE',
+      );
+    }
 
     const session = await this.provider.createSession(userId);
     user.kycStatus = KycStatus.PENDING;
@@ -77,6 +84,13 @@ export class KycService {
       approved?: boolean;
     },
   ) {
+    if (env.isProduction) {
+      throw new AppError(
+        403,
+        'La aprobación KYC en producción solo puede llegar desde webhook del proveedor',
+        'KYC_PROVIDER_REQUIRED',
+      );
+    }
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new AppError(404, 'User not found', 'NOT_FOUND');
 

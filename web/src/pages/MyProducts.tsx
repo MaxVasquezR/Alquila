@@ -69,13 +69,30 @@ export function MyProducts() {
         {products.map((p) => (
           <li key={p.id} className="card stock-item">
             <div className="stock-thumb">
-              <ProductArt title={p.title} category={p.category} imageUrl={p.imageUrl} size="sm" />
+              <ProductArt
+                title={p.title}
+                category={p.category}
+                imageUrl={p.coverImageUrl ?? p.imageUrl}
+                imageUrls={p.imageUrls}
+                size="sm"
+              />
             </div>
             <div className="stock-item-info">
               <strong>{p.title}</strong>
               <p>{p.district} · S/ {p.pricePerDay}/día</p>
+              <p className="thread-preview" style={{ marginTop: 4 }}>
+                Estado: {p.status === 'ACTIVE' ? 'Activa' : p.status === 'PENDING_PAYMENT' ? 'Pendiente de pago' : p.status}
+                {p.status === 'ACTIVE' && ' · Ya no editable'}
+              </p>
             </div>
-            <Link to={`/producto/${p.id}`} className="btn btn-ghost btn-sm">Ver</Link>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {p.status === 'ACTIVE' && (
+                <Link to={`/publicar/pago?productId=${p.id}`} className="btn btn-express btn-sm">
+                  Super Promo
+                </Link>
+              )}
+              <Link to={`/producto/${p.id}`} className="btn btn-ghost btn-sm">Ver</Link>
+            </div>
           </li>
         ))}
       </ul>

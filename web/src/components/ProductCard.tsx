@@ -8,7 +8,12 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <Link to={`/producto/${product.id}`} className="product-card">
       <div className="product-card-img">
-        <ProductArt title={product.title} category={product.category} imageUrl={product.imageUrl} />
+        <ProductArt
+          title={product.title}
+          category={product.category}
+          imageUrl={product.coverImageUrl ?? product.imageUrl}
+          imageUrls={product.imageUrls}
+        />
         {product.availableToday && (
           <span className="badge badge-today product-today">⚡ Hoy</span>
         )}
@@ -16,6 +21,9 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="badge badge-verified product-verified">✓</span>
         )}
         <span className="badge badge-cat product-cat">{categoryLabel(product.category)}</span>
+        {product.imageUrls.length > 1 && (
+          <span className="product-image-count">+{product.imageUrls.length - 1}</span>
+        )}
       </div>
       <div className="product-card-body">
         <div className="product-card-top">
@@ -23,7 +31,9 @@ export function ProductCard({ product }: { product: Product }) {
             S/ {product.pricePerDay}
             <small>/día</small>
           </span>
-          {product.isFeatured && <span className="badge badge-premium">Top</span>}
+          {product.isFeatured && (
+            <span className="badge badge-premium">{product.promotionLabel ?? 'Super Promo'}</span>
+          )}
         </div>
         <h3>{product.title}</h3>
         <p className="product-meta">📍 {product.district}</p>
@@ -31,7 +41,9 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="product-deals">{product.owner.dealsClosedCount} tratos cerrados</p>
         )}
         <p className="product-location">{product.locationLabel}</p>
-        <p className="product-pickup">⚡ Express · Recoges hoy</p>
+        <p className="product-pickup">
+          {product.availableToday ? '⚡ Disponible hoy' : '💬 Coordina por chat'}
+        </p>
       </div>
     </Link>
   );

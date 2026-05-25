@@ -3,6 +3,7 @@ import { User } from '../../entities/user.entity';
 import { Product } from '../../entities/product.entity';
 import { ListingPayment } from '../../entities/listing-payment.entity';
 import { MembershipPayment } from '../../entities/membership-payment.entity';
+import { AdPayment } from '../../entities/ad-payment.entity';
 import { ChatThread } from '../../entities/chat-thread.entity';
 import { DealStatus, PaymentStatus, ProductStatus } from '../../types/enums';
 import { AppError } from '../../middleware/error-handler';
@@ -15,20 +16,52 @@ export class ListingCheckoutService {
   private productRepo = AppDataSource.getRepository(Product);
   private paymentRepo = AppDataSource.getRepository(ListingPayment);
 
+  private getListingExpiryDate(from = new Date()) {
+    const expiresAt = new Date(from);
+    expiresAt.setDate(expiresAt.getDate() + env.listingDurationDays);
+    return expiresAt;
+  }
+
+  private canUseFirstMonthFreeListing(user: User) {
+    if (!env.firstListingFree) return false;
+    if (!user.emailVerified || !user.phoneVerified || !user.kycVerified || !user.dniHash) {
+      return false;
+    }
+    if (user.freeListingConsumedAt) return false;
+    const ageInDays =
+      (Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+    return ageInDays <= env.firstListingWindowDays;
+  }
+
+  async getListingDecision(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new AppError(404, 'User not found', 'NOT_FOUND');
+    const freeListing = this.canUseFirstMonthFreeListing(user);
+    return {
+      user,
+      freeListing,
+      needsPayment: !freeListing,
+      amountPen: env.listingFeePen,
+      expiresAt: this.getListingExpiryDate(),
+    };
+  }
+
   async needsPayment(userId: string): Promise<boolean> {
-    if (!env.firstListingFree) return true;
-    const count = await this.productRepo.count({
-      where: { ownerId: userId, status: ProductStatus.ACTIVE },
-    });
-    const pendingPaid = await this.paymentRepo.count({
-      where: { userId, status: PaymentStatus.COMPLETED },
-    });
-    return count + pendingPaid > 0;
+    const decision = await this.getListingDecision(userId);
+    return decision.needsPayment;
+  }
+
+  async consumeFreeListing(userId: string) {
+    const { user, freeListing } = await this.getListingDecision(userId);
+    if (!freeListing) return false;
+    user.freeListingConsumedAt = new Date();
+    await this.userRepo.save(user);
+    return true;
   }
 
   async createListingPayment(userId: string, productId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user?.kycVerified || !user.phoneVerified) {
+    if (!user?.kycVerified || !user.phoneVerified || !user.emailVerified) {
       throw new AppError(403, 'Cuenta no verificada', 'NOT_VERIFIED');
     }
 
@@ -40,14 +73,29 @@ export class ListingCheckoutService {
       throw new AppError(400, 'Producto no requiere pago', 'INVALID_STATUS');
     }
 
-    const needsPay = await this.needsPayment(userId);
-    if (!needsPay) {
+    const listingDecision = await this.getListingDecision(userId);
+    if (!listingDecision.needsPayment) {
+      await this.consumeFreeListing(userId);
       product.status = ProductStatus.ACTIVE;
+      product.publishedAt = new Date();
+      product.expiresAt = listingDecision.expiresAt;
       await this.productRepo.save(product);
-      return { freeListing: true, productId, status: ProductStatus.ACTIVE };
+      return {
+        freeListing: true,
+        productId,
+        status: ProductStatus.ACTIVE,
+        listingExpiresAt: product.expiresAt,
+      };
+    }
+    if (!env.allowDevMocks) {
+      throw new AppError(
+        503,
+        'Proveedor de pago aún no configurado para producción',
+        'PAYMENT_PROVIDER_UNAVAILABLE',
+      );
     }
 
-    const amount = env.listingFeePen;
+    const amount = listingDecision.amountPen;
     const payment = this.paymentRepo.create({
       userId,
       productId,
@@ -84,6 +132,13 @@ export class ListingCheckoutService {
     if (payment.status === PaymentStatus.COMPLETED) {
       return { status: PaymentStatus.COMPLETED, productId: payment.productId };
     }
+    if (!env.allowDevMocks) {
+      throw new AppError(
+        403,
+        'Los pagos en producción deben confirmarse por webhook del proveedor',
+        'PAYMENT_WEBHOOK_REQUIRED',
+      );
+    }
 
     payment.status = PaymentStatus.COMPLETED;
     payment.paidAt = new Date();
@@ -91,6 +146,8 @@ export class ListingCheckoutService {
 
     const product = payment.product;
     product.status = ProductStatus.ACTIVE;
+    product.publishedAt = new Date();
+    product.expiresAt = this.getListingExpiryDate();
     await this.productRepo.save(product);
 
     await auditService.log(userId, AuditAction.LISTING_PAYMENT, 'listing_payment', payment.id, {
@@ -101,6 +158,7 @@ export class ListingCheckoutService {
       status: PaymentStatus.COMPLETED,
       productId: payment.productId,
       paidAt: payment.paidAt,
+      listingExpiresAt: product.expiresAt,
     };
   }
 
@@ -122,6 +180,7 @@ export class AccountService {
   private productRepo = AppDataSource.getRepository(Product);
   private listingPaymentRepo = AppDataSource.getRepository(ListingPayment);
   private membershipPaymentRepo = AppDataSource.getRepository(MembershipPayment);
+  private adPaymentRepo = AppDataSource.getRepository(AdPayment);
   private threadRepo = AppDataSource.getRepository(ChatThread);
 
   async summary(userId: string) {
@@ -135,10 +194,26 @@ export class AccountService {
     const dealsAsTenant = await this.threadRepo.count({
       where: { tenantId: userId, dealStatus: DealStatus.CLOSED },
     });
+    const paidListings = await this.listingPaymentRepo.count({
+      where: { userId, status: PaymentStatus.COMPLETED },
+    });
+    const superPromos = await this.adPaymentRepo.count({
+      where: { userId, status: PaymentStatus.COMPLETED },
+    });
+    const listingRevenue = await this.listingPaymentRepo.find({
+      where: { userId, status: PaymentStatus.COMPLETED },
+    });
+    const superPromoRevenue = await this.adPaymentRepo.find({
+      where: { userId, status: PaymentStatus.COMPLETED },
+    });
+    const totalRevenue =
+      listingRevenue.reduce((sum, payment) => sum + Number(payment.amountPen), 0) +
+      superPromoRevenue.reduce((sum, payment) => sum + Number(payment.amountPen), 0);
 
     return {
       id: user.id,
       email: user.email,
+      emailVerified: user.emailVerified,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       kycStatus: user.kycStatus,
@@ -147,6 +222,13 @@ export class AccountService {
       phoneVerified: user.phoneVerified,
       membershipTier: user.membershipTier,
       membershipExpiresAt: user.membershipExpiresAt,
+      commerce: {
+        freeListingConsumed: Boolean(user.freeListingConsumedAt),
+        freeListingConsumedAt: user.freeListingConsumedAt,
+        paidListings,
+        superPromos,
+        totalRevenuePen: totalRevenue,
+      },
       stats: {
         products,
         dealsClosed: dealsAsOwner + dealsAsTenant,

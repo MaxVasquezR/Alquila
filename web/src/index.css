@@ -12,6 +12,10 @@
   --accent-glow: rgba(22, 163, 74, 0.25);
   --express: #f59e0b;
   --express-light: #fef3c7;
+  --speed: #f97316;
+  --speed-dark: #c2410c;
+  --speed-light: #ffedd5;
+  --speed-glow: rgba(249, 115, 22, 0.24);
   --danger: #dc2626;
   --radius: 14px;
   --radius-sm: 10px;
@@ -20,25 +24,36 @@
   --shadow-lg: 0 12px 32px rgba(10, 31, 18, 0.1);
   --nav-h: 72px;
   --container-max: 1140px;
+  --container-wide-max: 1260px;
   --container-pad: 1rem;
+}
+
+@media (min-width: 480px) {
+  :root {
+    --container-pad: 1rem;
+  }
 }
 
 @media (min-width: 768px) {
   :root {
     --container-pad: 1.25rem;
+    --container-max: 1180px;
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   :root {
-    --container-max: 1320px;
     --container-pad: 1.5rem;
+    --container-max: 1240px;
+    --container-wide-max: 1400px;
   }
 }
 
-@media (min-width: 1536px) {
+@media (min-width: 1440px) {
   :root {
     --container-max: 1440px;
+    --container-wide-max: 1520px;
+    --container-pad: 1.75rem;
   }
 }
 
@@ -85,15 +100,9 @@ button {
 
 .container-wide {
   width: 100%;
-  max-width: min(100%, calc(var(--container-max) + 120px));
+  max-width: min(100%, var(--container-wide-max));
   margin: 0 auto;
   padding: 0 var(--container-pad);
-}
-
-@media (min-width: 1280px) {
-  .container-wide {
-    max-width: min(100%, 1480px);
-  }
 }
 
 .btn {
@@ -120,13 +129,13 @@ button {
 }
 
 .btn-express {
-  background: linear-gradient(135deg, #22c55e 0%, var(--accent-dark) 100%);
+  background: linear-gradient(135deg, var(--speed) 0%, #f59e0b 34%, var(--accent-dark) 100%);
   color: #fff;
   font-size: 1.05rem;
   padding: 1rem 1.5rem;
   width: 100%;
   border-radius: var(--radius);
-  box-shadow: 0 6px 20px var(--accent-glow);
+  box-shadow: 0 10px 28px var(--speed-glow);
 }
 
 .btn-ghost {

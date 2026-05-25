@@ -3,6 +3,8 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { JwtPayload } from '../middleware/auth';
+import { AppDataSource } from '../config/data-source';
+import { ChatThread } from '../entities/chat-thread.entity';
 
 let io: Server | null = null;
 
@@ -35,7 +37,14 @@ export function initSocketIO(httpServer: HttpServer) {
     const userId = socket.data.userId as string;
     socket.join(`user:${userId}`);
 
-    socket.on('chat:join', (threadId: string) => {
+    socket.on('chat:join', async (threadId: string) => {
+      const thread = await AppDataSource.getRepository(ChatThread).findOne({
+        where: [{ id: threadId, ownerId: userId }, { id: threadId, tenantId: userId }],
+      });
+      if (!thread) {
+        socket.emit('chat:error', { code: 'FORBIDDEN_THREAD', threadId });
+        return;
+      }
       socket.join(`thread:${threadId}`);
     });
 

@@ -73,12 +73,16 @@ Ver [`backend/.env.example`](backend/.env.example):
 |--------|------|------|-------------|
 | POST | `/api/v1/auth/register` | No | Registro (requiere `acceptTerms: true`) |
 | POST | `/api/v1/auth/login` | No | Login → JWT |
+| POST | `/api/v1/auth/email/send` | Sí | Reenviar verificación de correo |
+| POST | `/api/v1/auth/email/verify` | No | Confirmar correo con token |
 | GET | `/api/v1/products` | No | Listado público (sin datos sensibles) |
 | GET | `/api/v1/products/:id` | No | Detalle público |
 | POST | `/api/v1/products` | Sí | Crear producto (fuzz + cifrado) |
 | GET | `/api/v1/products/me` | Sí | Mis productos (con ubicación exacta) |
 | POST | `/api/v1/checkout/membership` | Sí | Suscripción Premium (mock) |
 | GET | `/api/v1/ads/featured` | No | Productos destacados |
+| POST | `/api/v1/ads/checkout` | Sí | Checkout `Super Promo` |
+| POST | `/api/v1/ads/checkout/:paymentId/confirm` | Sí | Confirmar `Super Promo` |
 | POST | `/api/v1/rental-requests` | Sí | Solicitud express de alquiler |
 | POST | `/api/v1/chat/threads` | Sí | Abrir chat sobre producto |
 | POST | `/api/v1/chat/threads/:id/messages` | Sí | Enviar mensaje / cuestionario |
@@ -138,7 +142,13 @@ curl -X POST http://localhost:3000/api/v1/checkout/membership \
 ## Checklist de pruebas manuales
 
 - [ ] Registrar dueño con `acceptTerms: true`
-- [ ] Crear 5 productos activos (plan FREE) → el 6to debe devolver `403 FREE_LIMIT_REACHED`
+- [ ] Verificar correo desde el link enviado
+- [ ] Verificar celular
+- [ ] Completar KYC con `dniHash` único
+- [ ] Publicar con `1-3` imágenes reales (`jpg/png/webp`)
+- [ ] Primera publicación dentro del primer mes queda activa gratis por `30 días`
+- [ ] Segunda publicación del mismo usuario pide pago estándar
+- [ ] Activar `Super Promo` y validar badge/visibilidad destacada
 - [ ] `GET /products` no incluye teléfono, email del dueño ni dirección exacta
 - [ ] Coordenadas públicas difieren de las exactas (~500 m)
 - [ ] `POST /checkout/membership` activa `PREMIUM` por 30 días
@@ -161,3 +171,34 @@ npm run build        # Compilar TypeScript
 npm run start        # Producción
 npm run migration:run
 ```
+
+## Despliegue rápido
+
+### Web en Vercel
+
+- Define `VITE_API_URL=https://tu-backend.onrender.com` o la URL pública de Railway/Render.
+- Ejecuta el build desde `web/` con `npm run build`.
+- Publica el directorio del frontend como proyecto independiente.
+- El archivo `web/vercel.json` ya deja configurado el rewrite SPA hacia `index.html`.
+
+### Backend en Railway o Render
+
+- Usa `DB_DRIVER=postgres` y configura `DATABASE_URL`.
+- Define secretos reales para `JWT_SECRET`, `ENCRYPTION_KEY`, `KYC_WEBHOOK_SECRET` y `CORS_ORIGIN`.
+- Deja `SEED_DEMO_DATA=false` en producción.
+- Ejecuta `npm run build && npm run start`.
+- Si despliegas en Render, el archivo `render.yaml` ya deja preparada la app Node + Postgres gestionado.
+
+## Smoke checklist de producción
+
+- Registro y login de cuenta real.
+- Verificación de correo por proveedor SMTP real.
+- Verificación de celular.
+- Inicio de flujo KYC desde proveedor configurado.
+- Upload móvil de `3` imágenes.
+- Publicación gratis elegible en primer mes.
+- Publicación estándar pagada fuera del beneficio.
+- Activación y expiración de `Super Promo`.
+- Apertura de chat y actualización del trato.
+- Confirmación de pago desde webhook o integración real.
+- Reporte y bloqueo de usuarios.

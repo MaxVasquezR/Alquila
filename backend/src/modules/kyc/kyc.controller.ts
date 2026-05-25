@@ -3,6 +3,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { validateBody } from '../../middleware/validate';
 import { kycService } from './kyc.service';
 import { completeKycSchema } from './kyc.schemas';
+import { env } from '../../config/env';
 
 const router = Router();
 
@@ -28,6 +29,13 @@ router.post(
   validateBody(completeKycSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (env.isProduction) {
+        res.status(403).json({
+          error: 'KYC completion is provider-driven in production',
+          code: 'KYC_PROVIDER_REQUIRED',
+        });
+        return;
+      }
       res.json(await kycService.completeVerification(req.user!.userId, req.body));
     } catch (err) {
       next(err);

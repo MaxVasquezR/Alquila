@@ -13,6 +13,8 @@ export interface ProductPublicDto {
   id: string;
   title: string;
   imageUrl?: string;
+  coverImageUrl?: string;
+  imageUrls: string[];
   availableToday: boolean;
   description: string;
   category: string;
@@ -25,9 +27,12 @@ export interface ProductPublicDto {
     lng: number;
   };
   status: string;
+  publishedAt?: Date;
+  expiresAt?: Date;
   owner: PublicOwnerDto;
   createdAt: Date;
   isFeatured?: boolean;
+  promotionLabel?: string;
 }
 
 /** Mapper que garantiza que datos sensibles del dueño nunca salen en listados públicos */
@@ -43,12 +48,19 @@ export function toPublicOwner(owner: User): PublicOwnerDto {
 
 export function toProductPublicDto(
   product: Product,
-  options?: { isFeatured?: boolean },
+  options?: { isFeatured?: boolean; promotionLabel?: string },
 ): ProductPublicDto {
+  const orderedImages = [...(product.images ?? [])]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((image) => image.url);
+  const coverImageUrl = product.coverImageUrl ?? product.imageUrl ?? orderedImages[0];
+
   return {
     id: product.id,
     title: product.title,
-    imageUrl: product.imageUrl ?? undefined,
+    imageUrl: coverImageUrl ?? undefined,
+    coverImageUrl: coverImageUrl ?? undefined,
+    imageUrls: orderedImages.length > 0 ? orderedImages : coverImageUrl ? [coverImageUrl] : [],
     availableToday: product.availableToday,
     description: product.description,
     category: product.category,
@@ -61,8 +73,11 @@ export function toProductPublicDto(
       lng: product.publicLng,
     },
     status: product.status,
+    publishedAt: product.publishedAt,
+    expiresAt: product.expiresAt,
     owner: toPublicOwner(product.owner),
     createdAt: product.createdAt,
     isFeatured: options?.isFeatured,
+    promotionLabel: options?.promotionLabel,
   };
 }

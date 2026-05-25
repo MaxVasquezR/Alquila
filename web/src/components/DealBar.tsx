@@ -24,6 +24,16 @@ export function DealBar({
 }: Props) {
   const current = dealStepIndex(dealStatus);
   const [priceInput, setPriceInput] = useState('');
+  const nextStepLabel =
+    dealStatus === 'INTERESTED'
+      ? isOwner
+        ? 'Si aceptas, fija el precio final para liberar el siguiente paso.'
+        : 'Espera la confirmación del dueño y deja todo por escrito.'
+      : dealStatus === 'AGREED'
+        ? 'El trato ya fue acordado. Confirma la recogida y conserva el chat.'
+        : dealStatus === 'PICKED_UP'
+          ? 'Solo falta cerrar el trato cuando la entrega termine correctamente.'
+          : 'Historial cerrado.';
 
   return (
     <div className="deal-bar card">
@@ -40,6 +50,7 @@ export function DealBar({
       </div>
 
       {agreedPrice && <p className="deal-price">Acordado: S/ {agreedPrice}</p>}
+      <p className="deal-next-step">{nextStepLabel}</p>
 
       {isOwner && dealStatus === 'INTERESTED' && onConfirmDeal && (
         <div className="deal-confirm-row">

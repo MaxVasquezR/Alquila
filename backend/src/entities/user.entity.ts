@@ -21,6 +21,18 @@ export class User {
   @Column({ unique: true })
   email!: string;
 
+  @Column({ name: 'email_verified', default: false })
+  emailVerified!: boolean;
+
+  @Column({ name: 'email_verified_at', type: 'datetime', nullable: true })
+  emailVerifiedAt?: Date;
+
+  @Column({ name: 'email_verification_token_hash', nullable: true })
+  emailVerificationTokenHash?: string;
+
+  @Column({ name: 'email_verification_sent_at', type: 'datetime', nullable: true })
+  emailVerificationSentAt?: Date;
+
   @Column({ name: 'password_hash' })
   passwordHash!: string;
 
@@ -88,6 +100,9 @@ export class User {
 
   @Column({ name: 'accepted_terms_at', type: 'datetime', nullable: true })
   acceptedTermsAt?: Date;
+
+  @Column({ name: 'free_listing_consumed_at', type: 'datetime', nullable: true })
+  freeListingConsumedAt?: Date;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

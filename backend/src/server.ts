@@ -9,7 +9,9 @@ import { seedDemoIfEmpty } from './services/demo-seed.service';
 async function bootstrap() {
   await AppDataSource.initialize();
   console.log('Database connected');
-  await seedDemoIfEmpty();
+  if (env.seedDemoData) {
+    await seedDemoIfEmpty();
+  }
 
   const app = createApp();
   const server = http.createServer(app);

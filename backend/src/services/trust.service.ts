@@ -36,8 +36,12 @@ export class TrustService {
   async assertCanPublish(userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new AppError(404, 'User not found', 'NOT_FOUND');
-    if (!user.kycVerified || !user.phoneVerified) {
-      throw new AppError(403, 'Verifica celular e identidad para publicar', 'NOT_VERIFIED');
+    if (!user.emailVerified || !user.kycVerified || !user.phoneVerified) {
+      throw new AppError(
+        403,
+        'Verifica correo, celular e identidad para publicar',
+        'NOT_VERIFIED',
+      );
     }
     if (!this.isNewAccount(user)) return;
 
