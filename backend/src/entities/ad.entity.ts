@@ -23,10 +23,10 @@ export class Ad {
   @JoinColumn({ name: 'product_id' })
   product!: Product;
 
-  @Column({ name: 'starts_at', type: 'datetime' })
+  @Column({ name: 'starts_at', type: 'timestamp' })
   startsAt!: Date;
 
-  @Column({ name: 'ends_at', type: 'datetime' })
+  @Column({ name: 'ends_at', type: 'timestamp' })
   endsAt!: Date;
 
   @Column({ type: 'varchar', length: 30, default: AdPlacement.HOME_FEED })

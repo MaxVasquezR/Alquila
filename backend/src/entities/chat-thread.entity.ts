@@ -72,10 +72,10 @@ export class ChatThread {
   })
   agreedPrice?: string;
 
-  @Column({ name: 'location_shared_at', type: 'datetime', nullable: true })
+  @Column({ name: 'location_shared_at', type: 'timestamp', nullable: true })
   locationSharedAt?: Date;
 
-  @Column({ name: 'closed_at', type: 'datetime', nullable: true })
+  @Column({ name: 'closed_at', type: 'timestamp', nullable: true })
   closedAt?: Date;
 
   @OneToMany(() => ChatMessage, (message) => message.thread)

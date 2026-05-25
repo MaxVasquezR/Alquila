@@ -44,7 +44,7 @@ export class ListingPayment {
   @Column({ name: 'qr_payload', type: 'text', nullable: true })
   qrPayload?: string;
 
-  @Column({ name: 'paid_at', type: 'datetime', nullable: true })
+  @Column({ name: 'paid_at', type: 'timestamp', nullable: true })
   paidAt?: Date;
 
   @CreateDateColumn({ name: 'created_at' })

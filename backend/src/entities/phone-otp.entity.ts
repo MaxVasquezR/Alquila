@@ -16,7 +16,7 @@ export class PhoneOtp {
   @Column()
   code!: string;
 
-  @Column({ name: 'expires_at', type: 'datetime' })
+  @Column({ name: 'expires_at', type: 'timestamp' })
   expiresAt!: Date;
 
   @Column({ default: false })

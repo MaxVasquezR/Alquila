@@ -36,7 +36,7 @@ export class RentalRequest {
   @Column()
   district!: string;
 
-  @Column({ name: 'needed_by', type: 'datetime' })
+  @Column({ name: 'needed_by', type: 'timestamp' })
   neededBy!: Date;
 
   @Column({

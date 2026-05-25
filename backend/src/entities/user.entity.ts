@@ -25,13 +25,13 @@ export class User {
   @Column({ name: 'email_verified', default: false })
   emailVerified!: boolean;
 
-  @Column({ name: 'email_verified_at', type: 'datetime', nullable: true })
+  @Column({ name: 'email_verified_at', type: 'timestamp', nullable: true })
   emailVerifiedAt?: Date;
 
   @Column({ name: 'email_verification_token_hash', nullable: true })
   emailVerificationTokenHash?: string;
 
-  @Column({ name: 'email_verification_sent_at', type: 'datetime', nullable: true })
+  @Column({ name: 'email_verification_sent_at', type: 'timestamp', nullable: true })
   emailVerificationSentAt?: Date;
 
   @Column({ name: 'password_hash' })
@@ -79,7 +79,7 @@ export class User {
   @Column({ name: 'phone_verified', default: false })
   phoneVerified!: boolean;
 
-  @Column({ name: 'kyc_verified_at', type: 'datetime', nullable: true })
+  @Column({ name: 'kyc_verified_at', type: 'timestamp', nullable: true })
   kycVerifiedAt?: Date;
 
   @Column({
@@ -90,7 +90,7 @@ export class User {
   })
   membershipTier!: MembershipTier;
 
-  @Column({ name: 'membership_expires_at', type: 'datetime', nullable: true })
+  @Column({ name: 'membership_expires_at', type: 'timestamp', nullable: true })
   membershipExpiresAt?: Date;
 
   @Column({ name: 'requires_questionnaire', default: true })
@@ -99,10 +99,10 @@ export class User {
   @Column({ name: 'avatar_url', nullable: true })
   avatarUrl?: string;
 
-  @Column({ name: 'accepted_terms_at', type: 'datetime', nullable: true })
+  @Column({ name: 'accepted_terms_at', type: 'timestamp', nullable: true })
   acceptedTermsAt?: Date;
 
-  @Column({ name: 'free_listing_consumed_at', type: 'datetime', nullable: true })
+  @Column({ name: 'free_listing_consumed_at', type: 'timestamp', nullable: true })
   freeListingConsumedAt?: Date;
 
   @CreateDateColumn({ name: 'created_at' })
