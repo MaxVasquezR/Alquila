@@ -2,13 +2,8 @@ import { AppDataSource } from '../../config/data-source';
 import { env } from '../../config/env';
 import { Product } from '../../entities/product.entity';
 import { ProductImage } from '../../entities/product-image.entity';
-import { User } from '../../entities/user.entity';
 import { Ad } from '../../entities/ad.entity';
-import {
-  MembershipTier,
-  ProductStatus,
-  AuditAction,
-} from '../../types/enums';
+import { ProductStatus, AuditAction } from '../../types/enums';
 import { encrypt, encryptNumber, decrypt, decryptNumber } from '../../utils/encryption';
 import {
   fuzzCoordinates,
@@ -30,12 +25,10 @@ import {
 export class ProductsService {
   private productRepo = AppDataSource.getRepository(Product);
   private productImageRepo = AppDataSource.getRepository(ProductImage);
-  private userRepo = AppDataSource.getRepository(User);
 
   async create(ownerId: string, input: CreateProductInput) {
     await trustService.assertCanPublish(ownerId);
     await this.syncExpiredProducts();
-    await this.enforceFreeProductLimit(ownerId);
     const needsPay = await listingCheckoutService.needsPayment(ownerId);
     const imageUrls = this.resolveImageUrls(input);
 
@@ -86,7 +79,6 @@ export class ProductsService {
   async createExpress(ownerId: string, input: CreateProductExpressInput) {
     await trustService.assertCanPublish(ownerId);
     await this.syncExpiredProducts();
-    await this.enforceFreeProductLimit(ownerId);
     const needsPay = await listingCheckoutService.needsPayment(ownerId);
     const coords = getDistrictCoords(input.district);
     const exactAddress = `Zona ${input.district} (completar en chat)`;
@@ -233,7 +225,9 @@ export class ProductsService {
       order: { createdAt: 'DESC' },
     });
 
-    return products.map((p) => ({
+    return products
+      .filter((p) => p.status !== ProductStatus.DELETED)
+      .map((p) => ({
       ...toProductPublicDto(p),
       exactLocation: {
         address: decrypt(p.exactAddressEncrypted),
@@ -303,30 +297,88 @@ export class ProductsService {
     return toProductPublicDto(product);
   }
 
-  private async enforceFreeProductLimit(ownerId: string) {
-    const user = await this.userRepo.findOne({ where: { id: ownerId } });
-    if (!user) {
-      throw new AppError(404, 'User not found', 'NOT_FOUND');
-    }
-
-    const isPremium =
-      user.membershipTier === MembershipTier.PREMIUM &&
-      user.membershipExpiresAt &&
-      user.membershipExpiresAt > new Date();
-
-    if (isPremium) return;
-
-    const activeCount = await this.productRepo.count({
-      where: { ownerId, status: ProductStatus.ACTIVE },
+  async delete(ownerId: string, productId: string) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId, ownerId },
     });
-
-    if (activeCount >= env.freeProductLimit) {
+    if (!product) {
+      throw new AppError(404, 'Product not found', 'NOT_FOUND');
+    }
+    if (product.status === ProductStatus.DELETED) {
+      throw new AppError(400, 'La publicación ya fue eliminada', 'ALREADY_DELETED');
+    }
+    if (product.status === ProductStatus.RENTED) {
       throw new AppError(
-        403,
-        `Free plan allows max ${env.freeProductLimit} active products. Upgrade to Premium.`,
-        'FREE_LIMIT_REACHED',
+        400,
+        'No puedes eliminar una publicación con trato en curso',
+        'PRODUCT_IN_USE',
       );
     }
+
+    product.status = ProductStatus.DELETED;
+    product.deletedAt = new Date();
+    product.availableToday = false;
+    await this.productRepo.save(product);
+    await auditService.log(ownerId, AuditAction.PRODUCT_DELETED, 'product', product.id);
+    return { deleted: true, id: product.id, status: product.status };
+  }
+
+  async republish(ownerId: string, productId: string) {
+    const source = await this.productRepo.findOne({
+      where: { id: productId, ownerId },
+      relations: { images: true, owner: true },
+    });
+    if (!source) {
+      throw new AppError(404, 'Product not found', 'NOT_FOUND');
+    }
+    const republishableStatuses = [ProductStatus.EXPIRED];
+    if (!republishableStatuses.includes(source.status)) {
+      throw new AppError(
+        400,
+        'Solo puedes republicar publicaciones vencidas',
+        'INVALID_STATUS',
+      );
+    }
+
+    await trustService.assertCanPublish(ownerId);
+
+    const imageUrls = [...(source.images ?? [])]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((image) => image.url);
+
+    const republished = this.productRepo.create({
+      title: source.title,
+      description: source.description,
+      category: source.category,
+      pricePerDay: source.pricePerDay,
+      pricePerHour: source.pricePerHour,
+      district: source.district,
+      locationLabel: source.locationLabel,
+      publicLat: source.publicLat,
+      publicLng: source.publicLng,
+      exactAddressEncrypted: source.exactAddressEncrypted,
+      exactLatEncrypted: source.exactLatEncrypted,
+      exactLngEncrypted: source.exactLngEncrypted,
+      ownerId,
+      status: ProductStatus.PENDING_PAYMENT,
+      imageUrl: source.imageUrl,
+      coverImageUrl: source.coverImageUrl,
+      availableToday: source.availableToday,
+      republishedFromId: source.id,
+    });
+
+    await this.productRepo.save(republished);
+    await this.saveProductImages(republished.id, imageUrls);
+    await auditService.log(ownerId, AuditAction.PRODUCT_REPUBLISHED, 'product', republished.id, {
+      sourceProductId: source.id,
+    });
+
+    const withOwner = await this.findByIdWithOwner(republished.id);
+    return {
+      ...toProductPublicDto(withOwner!),
+      paymentRequired: true,
+      listingFeePen: env.listingFeePen,
+    };
   }
 
   private async findByIdWithOwner(id: string) {

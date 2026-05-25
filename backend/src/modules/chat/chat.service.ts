@@ -5,9 +5,12 @@ import { ChatMessage } from '../../entities/chat-message.entity';
 import { Product } from '../../entities/product.entity';
 import { User } from '../../entities/user.entity';
 import { PrivacyAuditLog } from '../../entities/privacy-audit-log.entity';
+import { DealCheckpoint } from '../../entities/deal-checkpoint.entity';
+import { DealCheckpointPhoto } from '../../entities/deal-checkpoint-photo.entity';
 import {
   ChatMessageType,
   ChatThreadStatus,
+  DealCheckpointStage,
   DealStatus,
   NotificationType,
   ProductStatus,
@@ -19,13 +22,21 @@ import { emitChatMessage, emitDealUpdate } from '../../services/socket.service';
 import { trustService } from '../../services/trust.service';
 import { auditService } from '../../services/audit.service';
 import { AuditAction } from '../../types/enums';
-import { SendMessageInput, UpdateDealStatusInput } from './chat.schemas';
+import {
+  SendMessageInput,
+  SubmitCheckpointInput,
+  UpdateDealStatusInput,
+} from './chat.schemas';
+import { mediaService } from '../../services/media.service';
 
 const DEAL_LABELS: Record<DealStatus, string> = {
   [DealStatus.INTERESTED]: 'Interesado',
   [DealStatus.AGREED]: 'Acordado',
+  [DealStatus.HANDOFF_PENDING]: 'Entrega pendiente',
   [DealStatus.PICKED_UP]: 'Recogido',
+  [DealStatus.RETURN_PENDING]: 'Recepción pendiente',
   [DealStatus.CLOSED]: 'Cerrado',
+  [DealStatus.INCIDENT_REPORTED]: 'Incidencia reportada',
 };
 
 export class ChatService {
@@ -33,6 +44,8 @@ export class ChatService {
   private messageRepo = AppDataSource.getRepository(ChatMessage);
   private productRepo = AppDataSource.getRepository(Product);
   private auditRepo = AppDataSource.getRepository(PrivacyAuditLog);
+  private checkpointRepo = AppDataSource.getRepository(DealCheckpoint);
+  private checkpointPhotoRepo = AppDataSource.getRepository(DealCheckpointPhoto);
 
   private threadDto(thread: ChatThread, userId: string) {
     const isOwner = thread.ownerId === userId;
@@ -289,8 +302,8 @@ export class ChatService {
 
     const transitions: Partial<Record<DealStatus, DealStatus[]>> = {
       [DealStatus.INTERESTED]: [DealStatus.AGREED],
-      [DealStatus.AGREED]: [DealStatus.PICKED_UP],
-      [DealStatus.PICKED_UP]: [DealStatus.CLOSED],
+      [DealStatus.AGREED]: [DealStatus.HANDOFF_PENDING],
+      [DealStatus.PICKED_UP]: [DealStatus.RETURN_PENDING],
     };
 
     const allowed = transitions[thread.dealStatus] ?? [];
@@ -302,7 +315,9 @@ export class ChatService {
       throw new AppError(403, 'Solo el dueño puede confirmar acuerdo', 'FORBIDDEN');
     }
     if (
-      (input.dealStatus === DealStatus.PICKED_UP ||
+      (input.dealStatus === DealStatus.HANDOFF_PENDING ||
+        input.dealStatus === DealStatus.RETURN_PENDING ||
+        input.dealStatus === DealStatus.PICKED_UP ||
         input.dealStatus === DealStatus.CLOSED) &&
       !isOwner
     ) {
@@ -328,7 +343,9 @@ export class ChatService {
 
     const notifMap: Partial<Record<DealStatus, NotificationType>> = {
       [DealStatus.AGREED]: NotificationType.DEAL_AGREED,
+      [DealStatus.HANDOFF_PENDING]: NotificationType.DEAL_HANDOFF_PENDING,
       [DealStatus.PICKED_UP]: NotificationType.DEAL_PICKED_UP,
+      [DealStatus.RETURN_PENDING]: NotificationType.DEAL_RETURN_PENDING,
       [DealStatus.CLOSED]: NotificationType.DEAL_CLOSED,
     };
     const recipient = isOwner ? thread.tenantId : thread.ownerId;
@@ -345,6 +362,109 @@ export class ChatService {
 
     this.emitDeal(thread, userId);
     return this.threadDto(thread, userId);
+  }
+
+  async getCheckpoints(userId: string, threadId: string) {
+    await this.loadThread(threadId, userId);
+    const checkpoints = await this.checkpointRepo.find({
+      where: { threadId },
+      relations: { photos: true, submittedBy: true },
+      order: { createdAt: 'ASC' },
+    });
+
+    return checkpoints.map((checkpoint) => this.toCheckpointDto(checkpoint));
+  }
+
+  async submitCheckpoint(
+    userId: string,
+    threadId: string,
+    input: SubmitCheckpointInput,
+    files: Express.Multer.File[],
+  ) {
+    const thread = await this.loadThread(threadId, userId, true);
+
+    const requiredStatusByStage: Record<DealCheckpointStage, DealStatus> = {
+      [DealCheckpointStage.HANDOFF]: DealStatus.HANDOFF_PENDING,
+      [DealCheckpointStage.RETURN]: DealStatus.RETURN_PENDING,
+    };
+    if (thread.dealStatus !== requiredStatusByStage[input.stage]) {
+      throw new AppError(
+        400,
+        'El trato no está en el paso correcto para subir esta evidencia',
+        'INVALID_CHECKPOINT_STATE',
+      );
+    }
+
+    const urls = await mediaService.uploadDealCheckpointImages(files);
+    const checkpoint = this.checkpointRepo.create({
+      threadId,
+      submittedById: userId,
+      stage: input.stage,
+      notes: input.notes?.trim() || undefined,
+    });
+    await this.checkpointRepo.save(checkpoint);
+
+    const photos = urls.map((url, index) =>
+      this.checkpointPhotoRepo.create({
+        checkpointId: checkpoint.id,
+        url,
+        sortOrder: index,
+      }),
+    );
+    await this.checkpointPhotoRepo.save(photos);
+
+    const nextStatus =
+      input.stage === DealCheckpointStage.HANDOFF
+        ? DealStatus.PICKED_UP
+        : DealStatus.CLOSED;
+    thread.dealStatus = nextStatus;
+    if (nextStatus === DealStatus.CLOSED) {
+      thread.status = ChatThreadStatus.CLOSED;
+      thread.closedAt = new Date();
+      await auditService.log(userId, AuditAction.DEAL_CLOSED, 'chat_thread', threadId);
+    }
+    await this.threadRepo.save(thread);
+    await this.syncProductStatus(thread.productId, nextStatus);
+
+    await auditService.log(
+      userId,
+      AuditAction.DEAL_CHECKPOINT_SUBMITTED,
+      'chat_thread',
+      threadId,
+      { stage: input.stage, photoCount: files.length },
+    );
+
+    const checkpointLabel =
+      input.stage === DealCheckpointStage.HANDOFF
+        ? 'Entrega validada con 4 fotos'
+        : 'Recepción validada con 4 fotos';
+    await this.addSystemMessage(
+      threadId,
+      userId,
+      `${checkpointLabel}${input.notes ? ` · ${input.notes}` : ''}`,
+    );
+
+    const recipient = thread.ownerId === userId ? thread.tenantId : thread.ownerId;
+    await notificationService.notify(recipient, {
+      type:
+        input.stage === DealCheckpointStage.HANDOFF
+          ? NotificationType.DEAL_PICKED_UP
+          : NotificationType.DEAL_CLOSED,
+      title: checkpointLabel,
+      body: `"${thread.product.title}" avanzó al siguiente paso`,
+      linkType: 'chat',
+      linkId: threadId,
+    });
+
+    this.emitDeal(thread, userId);
+    const fullCheckpoint = await this.checkpointRepo.findOne({
+      where: { id: checkpoint.id },
+      relations: { photos: true, submittedBy: true },
+    });
+    return {
+      thread: this.threadDto(thread, userId),
+      checkpoint: this.toCheckpointDto(fullCheckpoint!),
+    };
   }
 
   async sendMessage(userId: string, threadId: string, input: SendMessageInput) {
@@ -496,7 +616,12 @@ export class ChatService {
     const product = await this.productRepo.findOne({ where: { id: productId } });
     if (!product) return;
 
-    if (dealStatus === DealStatus.AGREED || dealStatus === DealStatus.PICKED_UP) {
+    if (
+      dealStatus === DealStatus.AGREED ||
+      dealStatus === DealStatus.HANDOFF_PENDING ||
+      dealStatus === DealStatus.PICKED_UP ||
+      dealStatus === DealStatus.RETURN_PENDING
+    ) {
       product.status = ProductStatus.RENTED;
       product.availableToday = false;
     } else if (dealStatus === DealStatus.CLOSED) {
@@ -527,5 +652,23 @@ export class ChatService {
 
   private emitDeal(thread: ChatThread, userId: string) {
     emitDealUpdate(thread.id, this.threadDto(thread, userId));
+  }
+
+  private toCheckpointDto(checkpoint: DealCheckpoint) {
+    return {
+      id: checkpoint.id,
+      threadId: checkpoint.threadId,
+      stage: checkpoint.stage,
+      notes: checkpoint.notes,
+      createdAt: checkpoint.createdAt,
+      submittedBy: checkpoint.submittedBy?.displayName,
+      photos: [...(checkpoint.photos ?? [])]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((photo) => ({
+          id: photo.id,
+          url: photo.url,
+          sortOrder: photo.sortOrder,
+        })),
+    };
   }
 }

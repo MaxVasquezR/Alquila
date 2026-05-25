@@ -44,6 +44,7 @@ export function AccountPage() {
           <h1>{summary.displayName}</h1>
           <p className="account-email">{summary.email}</p>
           <div className="detail-badges" style={{ marginTop: 8 }}>
+            {!summary.emailVerified && <span className="badge badge-today">Correo pendiente</span>}
             {summary.kycVerified && <span className="badge badge-verified">✓ Verificado</span>}
             {!summary.phoneVerified && <span className="badge badge-today">Celular pendiente</span>}
             {!summary.kycVerified && summary.phoneVerified && (
@@ -56,7 +57,7 @@ export function AccountPage() {
         </div>
       </div>
 
-      {!summary.kycVerified || !summary.phoneVerified ? (
+      {!summary.emailVerified || !summary.kycVerified || !summary.phoneVerified ? (
         <Link to="/verificar" className="btn btn-express" style={{ marginBottom: '1rem' }}>
           Completar verificación
         </Link>
@@ -75,6 +76,14 @@ export function AccountPage() {
           <p><strong>Membresía:</strong> {summary.membershipTier}</p>
           {summary.kycVerifiedAt && (
             <p><strong>Verificado desde:</strong> {new Date(summary.kycVerifiedAt).toLocaleDateString()}</p>
+          )}
+          {summary.commerce && (
+            <div style={{ marginTop: 12, display: 'grid', gap: 6 }}>
+              <p><strong>Ingresos registrados:</strong> S/ {summary.commerce.totalRevenuePen.toFixed(2)}</p>
+              <p><strong>Publicaciones pagadas:</strong> {summary.commerce.paidListings}</p>
+              <p><strong>Super promos:</strong> {summary.commerce.superPromos}</p>
+              <p><strong>Promo gratis usada:</strong> {summary.commerce.freeListingConsumed ? 'Sí' : 'No'}</p>
+            </div>
           )}
           <p style={{ marginTop: 12, fontSize: '0.85rem', color: 'var(--muted)' }}>
             Tus datos legales y DNI nunca se muestran a otros usuarios.

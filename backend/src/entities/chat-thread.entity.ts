@@ -12,6 +12,7 @@ import { ChatThreadStatus, DealStatus } from '../types/enums';
 import { Product } from './product.entity';
 import { User } from './user.entity';
 import { ChatMessage } from './chat-message.entity';
+import { DealCheckpoint } from './deal-checkpoint.entity';
 
 @Entity('chat_threads')
 export class ChatThread {
@@ -79,6 +80,9 @@ export class ChatThread {
 
   @OneToMany(() => ChatMessage, (message) => message.thread)
   messages!: ChatMessage[];
+
+  @OneToMany(() => DealCheckpoint, (checkpoint) => checkpoint.thread)
+  checkpoints!: DealCheckpoint[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

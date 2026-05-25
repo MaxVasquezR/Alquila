@@ -10,6 +10,7 @@ import { UserRole, MembershipTier, KycStatus } from '../types/enums';
 import { Product } from './product.entity';
 import { ChatThread } from './chat-thread.entity';
 import { ChatMessage } from './chat-message.entity';
+import { DealCheckpoint } from './deal-checkpoint.entity';
 import { RentalRequest } from './rental-request.entity';
 import { MembershipPayment } from './membership-payment.entity';
 
@@ -121,6 +122,9 @@ export class User {
 
   @OneToMany(() => ChatMessage, (message) => message.sender)
   messages!: ChatMessage[];
+
+  @OneToMany(() => DealCheckpoint, (checkpoint) => checkpoint.submittedBy)
+  dealCheckpoints!: DealCheckpoint[];
 
   @OneToMany(() => RentalRequest, (request) => request.tenant)
   rentalRequests!: RentalRequest[];

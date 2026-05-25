@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { useAuth } from '../auth';
 import { useToast } from '../components/Toast';
@@ -9,6 +9,7 @@ export function VerifyAccount() {
   const { user, refreshUser } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
   const showTestingHint = import.meta.env.DEV;
   const [step, setStep] = useState<'email' | 'phone' | 'kyc'>('email');
@@ -26,11 +27,21 @@ export function VerifyAccount() {
       navigate('/entrar');
       return;
     }
-    if (!user.emailVerified) setStep('email');
-    else if (user.phoneVerified && !user.kycVerified) setStep('kyc');
-    else if (!user.phoneVerified) setStep('phone');
-    if (user.kycVerified) navigate('/cuenta');
-  }, [user, navigate]);
+    if (!user.emailVerified) {
+      setStep('email');
+      return;
+    }
+    if (!user.phoneVerified) {
+      setStep('phone');
+      return;
+    }
+    if (!user.kycVerified) {
+      setStep('kyc');
+      return;
+    }
+    const from = (location.state as { from?: string } | null)?.from;
+    navigate(from ?? '/cuenta');
+  }, [user, navigate, location.state]);
 
   useEffect(() => {
     const emailToken = params.get('emailToken');
@@ -47,7 +58,6 @@ export function VerifyAccount() {
         });
         await refreshUser();
         toast('Correo verificado');
-        setStep('phone');
       } catch (err) {
         setError(err instanceof ApiError ? err.message : 'Error');
       } finally {
@@ -103,7 +113,6 @@ export function VerifyAccount() {
       });
       await refreshUser();
       toast('Celular verificado');
-      setStep('kyc');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');
     } finally {
@@ -134,7 +143,8 @@ export function VerifyAccount() {
       });
       await refreshUser();
       toast('¡Cuenta verificada!');
-      navigate('/cuenta');
+      const from = (location.state as { from?: string } | null)?.from;
+      navigate(from ?? '/cuenta');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');
     } finally {

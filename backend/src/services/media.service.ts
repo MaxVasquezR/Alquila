@@ -20,6 +20,10 @@ function getLocalUploadUrl(filename: string) {
   return `${env.apiBaseUrl.replace(/\/$/, '')}/uploads/products/${filename}`;
 }
 
+function getLocalDealUploadUrl(filename: string) {
+  return `${env.apiBaseUrl.replace(/\/$/, '')}/uploads/deals/${filename}`;
+}
+
 export class MediaService {
   private cloudinaryEnabled =
     Boolean(env.cloudinaryCloudName) &&
@@ -44,21 +48,31 @@ export class MediaService {
     if (files.length > env.maxProductImages) {
       throw new AppError(400, `Máximo ${env.maxProductImages} imágenes`, 'TOO_MANY_IMAGES');
     }
-    return Promise.all(files.map((file) => this.uploadSingleProductImage(file)));
+    return Promise.all(files.map((file) => this.uploadSingleImage(file, 'products')));
   }
 
-  private async uploadSingleProductImage(file: Express.Multer.File) {
-    if (this.cloudinaryEnabled) {
-      return this.uploadToCloudinary(file);
+  async uploadDealCheckpointImages(files: Express.Multer.File[]) {
+    if (files.length !== 4) {
+      throw new AppError(400, 'Debes subir exactamente 4 fotos claras', 'CHECKPOINT_IMAGES_REQUIRED');
     }
-    return this.uploadToLocalPublic(file);
+    return Promise.all(files.map((file) => this.uploadSingleImage(file, 'deals')));
   }
 
-  private async uploadToCloudinary(file: Express.Multer.File): Promise<string> {
+  private async uploadSingleImage(file: Express.Multer.File, folder: 'products' | 'deals') {
+    if (this.cloudinaryEnabled) {
+      return this.uploadToCloudinary(file, folder);
+    }
+    return this.uploadToLocalPublic(file, folder);
+  }
+
+  private async uploadToCloudinary(
+    file: Express.Multer.File,
+    folder: 'products' | 'deals',
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
-          folder: 'alquila/products',
+          folder: `alquila/${folder}`,
           resource_type: 'image',
           overwrite: false,
         },
@@ -76,12 +90,14 @@ export class MediaService {
     });
   }
 
-  private async uploadToLocalPublic(file: Express.Multer.File) {
+  private async uploadToLocalPublic(file: Express.Multer.File, folder: 'products' | 'deals') {
     const filename = `${randomUUID()}${getExtension(file)}`;
-    const uploadDir = path.resolve(process.cwd(), 'public', 'uploads', 'products');
+    const uploadDir = path.resolve(process.cwd(), 'public', 'uploads', folder);
     await fs.mkdir(uploadDir, { recursive: true });
     await fs.writeFile(path.join(uploadDir, filename), file.buffer);
-    return getLocalUploadUrl(filename);
+    return folder === 'products'
+      ? getLocalUploadUrl(filename)
+      : getLocalDealUploadUrl(filename);
   }
 }
 

@@ -17,6 +17,8 @@ import { UserBlock } from '../entities/user-block.entity';
 import { Notification } from '../entities/notification.entity';
 import { ProductImage } from '../entities/product-image.entity';
 import { AdPayment } from '../entities/ad-payment.entity';
+import { DealCheckpoint } from '../entities/deal-checkpoint.entity';
+import { DealCheckpointPhoto } from '../entities/deal-checkpoint-photo.entity';
 
 const entities = [
   User,
@@ -26,6 +28,8 @@ const entities = [
   AdPayment,
   ChatThread,
   ChatMessage,
+  DealCheckpoint,
+  DealCheckpointPhoto,
   RentalRequest,
   MembershipPayment,
   PrivacyAuditLog,

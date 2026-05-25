@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { authMiddleware } from '../../middleware/auth';
 import { validateBody } from '../../middleware/validate';
@@ -8,11 +9,28 @@ import {
   updateDealStatusSchema,
   ownerConfirmDealSchema,
   repeatContactSchema,
+  submitCheckpointSchema,
 } from './chat.schemas';
 import { ChatService } from './chat.service';
+import { env } from '../../config/env';
 
 const router = Router();
 const chatService = new ChatService();
+const checkpointUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: 4,
+    fileSize: env.maxProductImageBytes,
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.mimetype)) {
+      cb(new Error('Solo se permiten imágenes jpg, png o webp'));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 function paramId(req: Request): string {
   const id = req.params.id;
@@ -99,6 +117,15 @@ router.get('/threads/:id/messages', authMiddleware, async (req, res, next) => {
   }
 });
 
+router.get('/threads/:id/checkpoints', authMiddleware, async (req, res, next) => {
+  try {
+    const data = await chatService.getCheckpoints(req.user!.userId, paramId(req));
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post(
   '/threads/:id/messages',
   authMiddleware,
@@ -148,6 +175,26 @@ router.patch(
         req.body,
       );
       res.json(thread);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/threads/:id/checkpoints',
+  authMiddleware,
+  checkpointUpload.array('images', 4),
+  async (req, res, next) => {
+    try {
+      const parsed = submitCheckpointSchema.parse(req.body);
+      const result = await chatService.submitCheckpoint(
+        req.user!.userId,
+        paramId(req),
+        parsed,
+        (req.files as Express.Multer.File[] | undefined) ?? [],
+      );
+      res.status(201).json(result);
     } catch (err) {
       next(err);
     }

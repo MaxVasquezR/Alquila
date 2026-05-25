@@ -2,7 +2,6 @@ import { MoreThanOrEqual } from 'typeorm';
 import { AppDataSource } from '../config/data-source';
 import { UserBlock } from '../entities/user-block.entity';
 import { UserReport } from '../entities/user-report.entity';
-import { Product } from '../entities/product.entity';
 import { ChatThread } from '../entities/chat-thread.entity';
 import { User } from '../entities/user.entity';
 import { AppError } from '../middleware/error-handler';
@@ -10,27 +9,25 @@ import { auditService } from './audit.service';
 import { AuditAction } from '../types/enums';
 
 const NEW_ACCOUNT_DAYS = 7;
-const MAX_PUBLISH_PER_DAY = 2;
 const MAX_THREADS_PER_DAY = 5;
 
 export class TrustService {
   private blockRepo = AppDataSource.getRepository(UserBlock);
   private reportRepo = AppDataSource.getRepository(UserReport);
-  private productRepo = AppDataSource.getRepository(Product);
   private threadRepo = AppDataSource.getRepository(ChatThread);
   private userRepo = AppDataSource.getRepository(User);
-
-  private startOfToday() {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
 
   private isNewAccount(user: User) {
     if (!user.kycVerifiedAt) return true;
     const days =
       (Date.now() - user.kycVerifiedAt.getTime()) / (1000 * 60 * 60 * 24);
     return days < NEW_ACCOUNT_DAYS;
+  }
+
+  private startOfToday() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
   }
 
   async assertCanPublish(userId: string) {
@@ -41,21 +38,6 @@ export class TrustService {
         403,
         'Verifica correo, celular e identidad para publicar',
         'NOT_VERIFIED',
-      );
-    }
-    if (!this.isNewAccount(user)) return;
-
-    const count = await this.productRepo.count({
-      where: {
-        ownerId: userId,
-        createdAt: MoreThanOrEqual(this.startOfToday()),
-      },
-    });
-    if (count >= MAX_PUBLISH_PER_DAY) {
-      throw new AppError(
-        429,
-        `Máximo ${MAX_PUBLISH_PER_DAY} publicaciones por día (cuenta nueva)`,
-        'RATE_LIMIT',
       );
     }
   }

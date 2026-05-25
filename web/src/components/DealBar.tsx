@@ -8,8 +8,8 @@ interface Props {
   agreedPrice?: string;
   isOwner: boolean;
   onConfirmDeal?: (agreedPrice: number) => void;
-  onMarkPickedUp?: () => void;
-  onCloseDeal?: () => void;
+  onStartHandoff?: () => void;
+  onStartReturn?: () => void;
   busy?: boolean;
 }
 
@@ -18,8 +18,8 @@ export function DealBar({
   agreedPrice,
   isOwner,
   onConfirmDeal,
-  onMarkPickedUp,
-  onCloseDeal,
+  onStartHandoff,
+  onStartReturn,
   busy,
 }: Props) {
   const current = dealStepIndex(dealStatus);
@@ -30,9 +30,13 @@ export function DealBar({
         ? 'Si aceptas, fija el precio final para liberar el siguiente paso.'
         : 'Espera la confirmación del dueño y deja todo por escrito.'
       : dealStatus === 'AGREED'
-        ? 'El trato ya fue acordado. Confirma la recogida y conserva el chat.'
+        ? 'El trato ya fue acordado. Inicia la entrega con 4 fotos claras.'
+        : dealStatus === 'HANDOFF_PENDING'
+          ? 'Sube 4 fotos claras del equipo antes de marcarlo como recogido.'
         : dealStatus === 'PICKED_UP'
-          ? 'Solo falta cerrar el trato cuando la entrega termine correctamente.'
+          ? 'El equipo ya salió. Al recibirlo de vuelta, abre la recepción con 4 fotos.'
+          : dealStatus === 'RETURN_PENDING'
+            ? 'Sube 4 fotos claras de la recepción para cerrar el trato.'
           : 'Historial cerrado.';
 
   return (
@@ -77,15 +81,15 @@ export function DealBar({
         </div>
       )}
 
-      {isOwner && dealStatus === 'AGREED' && onMarkPickedUp && (
-        <button type="button" className="btn btn-primary" onClick={onMarkPickedUp} disabled={busy}>
-          Marcar recogido
+      {isOwner && dealStatus === 'AGREED' && onStartHandoff && (
+        <button type="button" className="btn btn-primary" onClick={onStartHandoff} disabled={busy}>
+          Iniciar entrega
         </button>
       )}
 
-      {isOwner && dealStatus === 'PICKED_UP' && onCloseDeal && (
-        <button type="button" className="btn btn-ghost" onClick={onCloseDeal} disabled={busy}>
-          Cerrar trato
+      {isOwner && dealStatus === 'PICKED_UP' && onStartReturn && (
+        <button type="button" className="btn btn-ghost" onClick={onStartReturn} disabled={busy}>
+          Iniciar recepción
         </button>
       )}
 

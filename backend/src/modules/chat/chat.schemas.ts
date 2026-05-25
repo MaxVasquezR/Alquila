@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ChatMessageType, DealStatus } from '../../types/enums';
+import { ChatMessageType, DealCheckpointStage, DealStatus } from '../../types/enums';
 
 export const createThreadSchema = z.object({
   productId: z.string().uuid(),
@@ -30,5 +30,11 @@ export const repeatContactSchema = z.object({
   productId: z.string().uuid(),
 });
 
+export const submitCheckpointSchema = z.object({
+  stage: z.nativeEnum(DealCheckpointStage),
+  notes: z.string().max(500).optional(),
+});
+
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type UpdateDealStatusInput = z.infer<typeof updateDealStatusSchema>;
+export type SubmitCheckpointInput = z.infer<typeof submitCheckpointSchema>;

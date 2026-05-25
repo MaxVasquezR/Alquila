@@ -29,7 +29,7 @@ export function Publish() {
 
   useEffect(() => {
     if (!user) navigate('/entrar');
-    else if (!user.canPublish) navigate('/verificar');
+    else if (!user.canPublish) navigate('/verificar', { state: { from: '/publicar' } });
   }, [user, navigate]);
 
   useEffect(() => () => {
@@ -41,7 +41,7 @@ export function Publish() {
   async function handle(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!user?.canPublish) {
-      navigate('/verificar');
+      navigate('/verificar', { state: { from: '/publicar' } });
       return;
     }
     const fd = new FormData(e.currentTarget);
@@ -108,7 +108,7 @@ export function Publish() {
     <div className="container publish-page">
       <div className="page-header">
         <h1>Ofrecer equipo</h1>
-        <p>1 publicación gratis en tu primer mes verificado · luego S/ 4 · Super Promo S/ 14</p>
+        <p>Publica todos los productos que necesites con cuenta validada · cada publicación se activa por producto.</p>
       </div>
 
       {!user.canPublish && (
@@ -208,6 +208,7 @@ export function Publish() {
             <ul className="trust-list">
               <li>Describe el estado real del equipo y qué incluye.</li>
               <li>Usa hasta 3 fotos claras y evita títulos genéricos.</li>
+              <li>Cada producto va en su propia publicación y se activa por separado.</li>
               <li>Publica solo si puedes responder y coordinar rápido por chat.</li>
               <li>Cuando tu aviso salga en vivo, quedará bloqueado para edición.</li>
             </ul>

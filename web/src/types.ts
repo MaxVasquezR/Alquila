@@ -24,6 +24,8 @@ export interface Product {
   status: string;
   publishedAt?: string;
   expiresAt?: string;
+  deletedAt?: string;
+  createdAt?: string;
   owner: PublicOwner;
   isFeatured?: boolean;
   promotionLabel?: string;
@@ -60,6 +62,13 @@ export interface AccountSummary {
   phoneVerified: boolean;
   membershipTier: string;
   membershipExpiresAt?: string;
+  commerce?: {
+    freeListingConsumed: boolean;
+    freeListingConsumedAt?: string;
+    paidListings: number;
+    superPromos: number;
+    totalRevenuePen: number;
+  };
   stats: {
     products: number;
     dealsClosed: number;
@@ -75,6 +84,22 @@ export interface ChatMessage {
   type: string;
   senderId: string;
   createdAt: string;
+}
+
+export interface DealCheckpointPhoto {
+  id: string;
+  url: string;
+  sortOrder: number;
+}
+
+export interface DealCheckpoint {
+  id: string;
+  threadId: string;
+  stage: 'HANDOFF' | 'RETURN';
+  notes?: string;
+  createdAt: string;
+  submittedBy?: string;
+  photos: DealCheckpointPhoto[];
 }
 
 export interface ChatThread {

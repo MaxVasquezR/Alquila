@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState, useRef, useCallback } from 'react';
+import { FormEvent, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { useAuth } from '../auth';
@@ -6,7 +6,7 @@ import { getSocket } from '../socket';
 import { OWNER_TEMPLATES } from '../chat-templates';
 import { DealBar } from '../components/DealBar';
 import { useToast } from '../components/Toast';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, DealCheckpoint } from '../types';
 import type { DealStatus } from '../deal-status';
 import './Chat.css';
 
@@ -31,6 +31,9 @@ export function Chat() {
   const [location, setLocation] = useState<{ address: string; lat?: number; lng?: number } | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [checkpoints, setCheckpoints] = useState<DealCheckpoint[]>([]);
+  const [checkpointFiles, setCheckpointFiles] = useState<File[]>([]);
+  const [checkpointNotes, setCheckpointNotes] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('Comportamiento sospechoso');
   const [reportDetails, setReportDetails] = useState('');
@@ -49,9 +52,17 @@ export function Chat() {
       .catch(() => {});
   }, [threadId]);
 
+  const loadCheckpoints = useCallback(() => {
+    if (!threadId) return;
+    api<{ data: DealCheckpoint[] }>(`/chat/threads/${threadId}/checkpoints`)
+      .then((res) => setCheckpoints(res.data))
+      .catch(() => {});
+  }, [threadId]);
+
   useEffect(() => {
     loadThread();
     loadMessages();
+    loadCheckpoints();
     const s = getSocket();
     if (!s || !threadId) return;
     s.emit('chat:join', threadId);
@@ -61,7 +72,7 @@ export function Chat() {
       }
     };
     const onDeal = (t: ThreadInfo) => {
-      if (t.id === threadId) setThread(t);
+      if (t.id === threadId) loadThread();
     };
     s.on('chat:message', onMsg);
     s.on('deal:updated', onDeal);
@@ -70,7 +81,7 @@ export function Chat() {
       s.off('chat:message', onMsg);
       s.off('deal:updated', onDeal);
     };
-  }, [threadId, loadThread, loadMessages]);
+  }, [threadId, loadThread, loadMessages, loadCheckpoints]);
 
   useEffect(() => {
     if (
@@ -91,6 +102,15 @@ export function Chat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const checkpointPreviewUrls = useMemo(
+    () => checkpointFiles.map((file) => URL.createObjectURL(file)),
+    [checkpointFiles],
+  );
+
+  useEffect(() => () => {
+    checkpointPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+  }, [checkpointPreviewUrls]);
 
   async function send(content: string) {
     if (!threadId || !content.trim() || thread?.dealStatus === 'CLOSED') return;
@@ -165,13 +185,13 @@ export function Chat() {
     }
   }
 
-  async function markPickedUp() {
+  async function startHandoff() {
     if (!threadId) return;
     setBusy(true);
     try {
       const t = await api<ThreadInfo>(`/chat/threads/${threadId}/deal-status`, {
         method: 'PATCH',
-        body: JSON.stringify({ dealStatus: 'PICKED_UP' }),
+        body: JSON.stringify({ dealStatus: 'HANDOFF_PENDING' }),
       });
       setThread(t);
       loadMessages();
@@ -182,16 +202,61 @@ export function Chat() {
     }
   }
 
-  async function closeDeal() {
+  async function startReturn() {
     if (!threadId) return;
     setBusy(true);
     try {
       const t = await api<ThreadInfo>(`/chat/threads/${threadId}/deal-status`, {
         method: 'PATCH',
-        body: JSON.stringify({ dealStatus: 'CLOSED' }),
+        body: JSON.stringify({ dealStatus: 'RETURN_PENDING' }),
       });
       setThread(t);
       loadMessages();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitCheckpoint() {
+    if (!threadId || !thread) return;
+    if (checkpointFiles.length !== 4) {
+      setError('Debes subir exactamente 4 fotos claras.');
+      return;
+    }
+    const stage =
+      thread.dealStatus === 'HANDOFF_PENDING'
+        ? 'HANDOFF'
+        : thread.dealStatus === 'RETURN_PENDING'
+          ? 'RETURN'
+          : null;
+    if (!stage) return;
+
+    setBusy(true);
+    setError('');
+    try {
+      const payload = new FormData();
+      payload.append('stage', stage);
+      if (checkpointNotes.trim()) payload.append('notes', checkpointNotes.trim());
+      checkpointFiles.forEach((file) => payload.append('images', file));
+      const result = await api<{ thread: ThreadInfo; checkpoint: DealCheckpoint }>(
+        `/chat/threads/${threadId}/checkpoints`,
+        {
+          method: 'POST',
+          body: payload,
+        },
+      );
+      setThread(result.thread);
+      setCheckpointFiles([]);
+      setCheckpointNotes('');
+      loadMessages();
+      loadCheckpoints();
+      toast(
+        stage === 'HANDOFF'
+          ? 'Entrega registrada con 4 fotos.'
+          : 'Recepción registrada y trato cerrado.',
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');
     } finally {
@@ -211,9 +276,13 @@ export function Chat() {
     thread?.dealStatus === 'INTERESTED'
       ? 'Aún están negociando. Dejen por escrito precio, horario y condiciones.'
       : thread?.dealStatus === 'AGREED'
-        ? 'El precio ya fue acordado. Confirma punto exacto y hora antes de salir.'
+        ? 'El precio ya fue acordado. Inicia la entrega y prepara 4 fotos claras del equipo.'
+        : thread?.dealStatus === 'HANDOFF_PENDING'
+          ? 'La entrega está abierta. Sube 4 fotos claras para registrar el estado del equipo.'
         : thread?.dealStatus === 'PICKED_UP'
-          ? 'El equipo ya fue entregado. Mantengan el chat para registrar el cierre.'
+          ? 'El equipo ya fue entregado. Cuando vuelva, abre la recepción y toma otras 4 fotos.'
+          : thread?.dealStatus === 'RETURN_PENDING'
+            ? 'La recepción está abierta. Sube 4 fotos claras para cerrar el trato.'
           : 'El trato terminó. Puedes revisar el historial o volver a contactar.';
 
   return (
@@ -320,10 +389,59 @@ export function Chat() {
           agreedPrice={thread.agreedPrice}
           isOwner={thread.isOwner}
           onConfirmDeal={thread.isOwner ? confirmDeal : undefined}
-          onMarkPickedUp={thread.isOwner ? markPickedUp : undefined}
-          onCloseDeal={thread.isOwner ? closeDeal : undefined}
+          onStartHandoff={thread.isOwner ? startHandoff : undefined}
+          onStartReturn={thread.isOwner ? startReturn : undefined}
           busy={busy}
         />
+      )}
+
+      {thread && (thread.dealStatus === 'HANDOFF_PENDING' || thread.dealStatus === 'RETURN_PENDING') && (
+        <div className="card chat-action-panel">
+          <strong>
+            {thread.dealStatus === 'HANDOFF_PENDING'
+              ? 'Entrega con 4 fotos obligatorias'
+              : 'Recepción con 4 fotos obligatorias'}
+          </strong>
+          <p>
+            {thread.isOwner
+              ? 'Toma fotos claras del equipo, accesorios y estado general. Sin las 4 fotos no avanza el trato.'
+              : 'Espera a que el dueño suba las 4 fotos obligatorias para seguir al siguiente paso.'}
+          </p>
+          {thread.isOwner && (
+            <>
+              <div className="field">
+                <label className="label">4 fotos claras</label>
+                <input
+                  className="input"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  multiple
+                  onChange={(e) => setCheckpointFiles(Array.from(e.target.files ?? []).slice(0, 4))}
+                />
+              </div>
+              {checkpointPreviewUrls.length > 0 && (
+                <div className="chat-checkpoint-grid">
+                  {checkpointPreviewUrls.map((url, index) => (
+                    <img key={url} src={url} alt={`Evidencia ${index + 1}`} className="chat-checkpoint-thumb" />
+                  ))}
+                </div>
+              )}
+              <div className="field">
+                <label className="label">Observación rápida (opcional)</label>
+                <textarea
+                  className="textarea"
+                  rows={2}
+                  value={checkpointNotes}
+                  onChange={(e) => setCheckpointNotes(e.target.value)}
+                  placeholder="Ej: se entrega limpio, con cable y accesorios completos."
+                />
+              </div>
+              <button type="button" className="btn btn-express" onClick={submitCheckpoint} disabled={busy}>
+                {busy ? 'Guardando...' : 'Guardar 4 fotos y continuar'}
+              </button>
+            </>
+          )}
+        </div>
       )}
 
       {location && (
@@ -356,6 +474,30 @@ export function Chat() {
         ))}
         <div ref={bottomRef} />
       </div>
+
+      {checkpoints.length > 0 && (
+        <div className="card chat-safety-card">
+          <strong>Evidencias del trato</strong>
+          <div style={{ display: 'grid', gap: '0.75rem', marginTop: '0.75rem' }}>
+            {checkpoints.map((checkpoint) => (
+              <div key={checkpoint.id} className="chat-checkpoint-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                  <strong>
+                    {checkpoint.stage === 'HANDOFF' ? 'Entrega' : 'Recepción'} · {checkpoint.submittedBy ?? 'Usuario'}
+                  </strong>
+                  <span className="thread-preview">{new Date(checkpoint.createdAt).toLocaleString()}</span>
+                </div>
+                {checkpoint.notes && <p className="thread-preview" style={{ marginTop: 6 }}>{checkpoint.notes}</p>}
+                <div className="chat-checkpoint-grid">
+                  {checkpoint.photos.map((photo) => (
+                    <img key={photo.id} src={photo.url} alt="Evidencia del trato" className="chat-checkpoint-thumb" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {thread?.isOwner && thread.dealStatus !== 'CLOSED' && (
         <div className="template-row">

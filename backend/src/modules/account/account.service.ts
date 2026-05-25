@@ -73,7 +73,15 @@ export class ListingCheckoutService {
       throw new AppError(400, 'Producto no requiere pago', 'INVALID_STATUS');
     }
 
-    const listingDecision = await this.getListingDecision(userId);
+    const forcePaidRepublish = Boolean(product.republishedFromId);
+    const listingDecision = forcePaidRepublish
+      ? {
+          freeListing: false,
+          needsPayment: true,
+          amountPen: env.listingFeePen,
+          expiresAt: this.getListingExpiryDate(),
+        }
+      : await this.getListingDecision(userId);
     if (!listingDecision.needsPayment) {
       await this.consumeFreeListing(userId);
       product.status = ProductStatus.ACTIVE;
@@ -96,6 +104,22 @@ export class ListingCheckoutService {
     }
 
     const amount = listingDecision.amountPen;
+    const existingPending = await this.paymentRepo.findOne({
+      where: { userId, productId, status: PaymentStatus.PENDING },
+      order: { createdAt: 'DESC' },
+    });
+    if (existingPending) {
+      return {
+        paymentId: existingPending.id,
+        productId,
+        amountPen: Number(existingPending.amountPen),
+        qrPayload: existingPending.qrPayload,
+        provider: 'YAPE_PLIN',
+        expiresInMinutes: 15,
+        status: existingPending.status,
+      };
+    }
+
     const payment = this.paymentRepo.create({
       userId,
       productId,
@@ -187,7 +211,9 @@ export class AccountService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new AppError(404, 'User not found', 'NOT_FOUND');
 
-    const products = await this.productRepo.count({ where: { ownerId: userId } });
+    const products = await this.productRepo.count({
+      where: { ownerId: userId, status: ProductStatus.ACTIVE },
+    });
     const dealsAsOwner = await this.threadRepo.count({
       where: { ownerId: userId, dealStatus: DealStatus.CLOSED },
     });
@@ -296,7 +322,9 @@ export class AccountService {
       where: { ownerId: userId },
       order: { createdAt: 'DESC' },
     });
-    return items.map((p) => ({
+    return items
+      .filter((p) => p.status !== ProductStatus.DELETED)
+      .map((p) => ({
       id: p.id,
       title: p.title,
       status: p.status,

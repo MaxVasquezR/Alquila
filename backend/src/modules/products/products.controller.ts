@@ -167,4 +167,25 @@ router.patch(
   },
 );
 
+router.delete('/:id', authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await productsService.delete(req.user!.userId, paramId(req)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post(
+  '/:id/republish',
+  authMiddleware,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const product = await productsService.republish(req.user!.userId, paramId(req));
+      res.status(201).json(product);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 export const productsRouter = router;

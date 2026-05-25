@@ -89,6 +89,12 @@ export class Product {
   @Column({ name: 'expires_at', type: 'datetime', nullable: true })
   expiresAt?: Date;
 
+  @Column({ name: 'deleted_at', type: 'datetime', nullable: true })
+  deletedAt?: Date;
+
+  @Column({ name: 'republished_from_id', nullable: true })
+  republishedFromId?: string;
+
   @Column({ name: 'owner_id' })
   ownerId!: string;
 

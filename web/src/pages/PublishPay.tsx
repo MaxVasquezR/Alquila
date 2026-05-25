@@ -9,6 +9,7 @@ import './Commerce.css';
 export function PublishPay() {
   const [params] = useSearchParams();
   const productId = params.get('productId') ?? '';
+  const mode = params.get('mode') === 'promo' ? 'promo' : 'listing';
   const { user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -27,6 +28,10 @@ export function PublishPay() {
       navigate('/publicar');
       return;
     }
+    if (mode === 'promo') {
+      setListingActive(true);
+      return;
+    }
     api<ListingPaymentResult>('/account/listing', {
       method: 'POST',
       body: JSON.stringify({ productId }),
@@ -36,7 +41,7 @@ export function PublishPay() {
         else setPayment(res);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Error'));
-  }, [user, productId, navigate]);
+  }, [user, productId, navigate, mode]);
 
   async function confirmPaid() {
     if (!payment?.paymentId) return;
@@ -90,8 +95,12 @@ export function PublishPay() {
   return (
     <div className="container page-narrow">
       <div className="page-header">
-        <h1>Activar publicación</h1>
-        <p>Pasa de borrador a visible y luego impulsa con Super Promo.</p>
+        <h1>{mode === 'promo' ? 'Impulsar publicación' : 'Activar publicación'}</h1>
+        <p>
+          {mode === 'promo'
+            ? 'Sube tu publicación al frente con más visibilidad comercial.'
+            : 'Pasa de borrador a visible y luego impulsa con Super Promo.'}
+        </p>
       </div>
 
       {error && <p className="error-msg">{error}</p>}
