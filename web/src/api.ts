@@ -1,4 +1,6 @@
-const API = `${(import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')}/api/v1`.replace(
+import { getApiBaseUrl } from './config';
+
+const API = `${getApiBaseUrl()}/api/v1`.replace(
   /^\/api/,
   '/api',
 );

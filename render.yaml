@@ -17,7 +17,11 @@ services:
           name: alquila-postgres
           property: connectionString
       - key: CORS_ORIGIN
-        sync: false
+        value: https://alquila-1.onrender.com
+      - key: APP_URL
+        value: https://alquila-1.onrender.com
+      - key: API_BASE_URL
+        value: https://alquila.onrender.com
       - key: JWT_SECRET
         generateValue: true
       - key: ENCRYPTION_KEY

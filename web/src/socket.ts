@@ -1,7 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import { getToken } from './api';
+import { getApiBaseUrl } from './config';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const SOCKET_URL = getApiBaseUrl() || 'http://localhost:3000';
 
 let socket: Socket | null = null;
 
