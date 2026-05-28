@@ -174,17 +174,29 @@ npm run migration:run
 
 ## Despliegue rápido
 
-### Web en Vercel
+### URLs en Render (producción actual)
 
-- Define `VITE_API_URL=https://tu-backend.onrender.com` o la URL pública de Railway/Render.
+| Servicio | URL | Rol |
+|----------|-----|-----|
+| Web (SPA) | `https://alquila-1.onrender.com` | Frontend React |
+| API | `https://alquila.onrender.com` | Backend Express + Postgres |
+
+La web debe llamar a la API en `alquila.onrender.com`, no al dominio del SPA. El archivo [`web/.env.production`](web/.env.production) fija `VITE_API_URL=https://alquila.onrender.com` en cada `npm run build`.
+
+### Web en Vercel o Render (estático)
+
+- Copia [`web/.env.example`](web/.env.example) a `.env.local` solo si necesitas override local.
+- En producción, `VITE_API_URL` ya viene en `.env.production`; en el panel de Render/Vercel puedes repetir la misma variable por si el build no lee el archivo del repo.
 - Ejecuta el build desde `web/` con `npm run build`.
-- Publica el directorio del frontend como proyecto independiente.
+- Publica el directorio `web/dist` como proyecto independiente.
 - El archivo `web/vercel.json` ya deja configurado el rewrite SPA hacia `index.html`.
+- Tras cambiar la URL de la API, **vuelve a desplegar** el frontend (Vite inyecta `VITE_*` solo en build time).
 
 ### Backend en Railway o Render
 
 - Usa `DB_DRIVER=postgres` y configura `DATABASE_URL`.
 - Define secretos reales para `JWT_SECRET`, `ENCRYPTION_KEY`, `KYC_WEBHOOK_SECRET` y `CORS_ORIGIN`.
+- En Render, `CORS_ORIGIN` debe incluir el origen del frontend (p. ej. `https://alquila-1.onrender.com`).
 - Deja `SEED_DEMO_DATA=false` en producción.
 - Ejecuta `npm run build && npm run start`.
 - Si despliegas en Render, el archivo `render.yaml` ya deja preparada la app Node + Postgres gestionado.

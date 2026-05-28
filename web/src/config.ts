@@ -1,7 +1,9 @@
 const configuredApiUrl = (import.meta.env.VITE_API_URL ?? '').trim();
 
+const PRODUCTION_API_URL = 'https://alquila.onrender.com';
+
 const renderApiFallbacks: Record<string, string> = {
-  'alquila-1.onrender.com': 'https://alquila.onrender.com',
+  'alquila-1.onrender.com': PRODUCTION_API_URL,
 };
 
 export function getApiBaseUrl(): string {
@@ -14,6 +16,10 @@ export function getApiBaseUrl(): string {
     if (fallback) {
       return fallback;
     }
+  }
+
+  if (import.meta.env.PROD) {
+    return PRODUCTION_API_URL;
   }
 
   return '';
